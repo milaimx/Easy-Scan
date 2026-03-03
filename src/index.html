@@ -210,7 +210,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
     </div>
     <div class="setting-row col" id="customPrefixRow" style="display:none">
       <div class="setting-label" id="lblCustomPrefix">自定义前缀（逗号分隔）</div>
-      <input class="s-input full" id="customPrefixInput" placeholder="如：465, GC, JMX">
+      <input class="s-input full" id="customPrefixInput" placeholder="如：46, GC, JMX">
     </div>
   </div>
 
@@ -313,7 +313,7 @@ const I18N = {
     prefixBarLabel:'选择规则:',chipCustom:'自定义',chipAll:'全部',
     navLblScan:'扫描',navLblSettings:'设置',
     shPrefix:'前缀过滤规则',lblPreset:'选择预设规则',
-    optML:'MercadoLibre（前缀：465）',optJT:'J&T Express（前缀：GC, JMX）',
+    optML:'MercadoLibre（前缀：46）',optJT:'J&T Express（前缀：GC, JMX）',
     optCustom:'自定义前缀...',optAll:'-- 接受所有条码（无限制）--',
     lblCurPrefix:'当前生效前缀',lblPrefixSub:'空=接受所有条码',
     lblCustomPrefix:'自定义前缀（逗号分隔）',
@@ -355,7 +355,7 @@ const I18N = {
     prefixBarLabel:'Rule:',chipCustom:'Custom',chipAll:'All',
     navLblScan:'Scan',navLblSettings:'Settings',
     shPrefix:'Prefix Filter',lblPreset:'Select Preset',
-    optML:'MercadoLibre (prefix: 465)',optJT:'J&T Express (prefix: GC, JMX)',
+    optML:'MercadoLibre (prefix: 46)',optJT:'J&T Express (prefix: GC, JMX)',
     optCustom:'Custom prefix...',optAll:'-- Accept all barcodes --',
     lblCurPrefix:'Active Prefix',lblPrefixSub:'Empty = accept all',
     lblCustomPrefix:'Custom prefixes (comma-separated)',
@@ -397,7 +397,7 @@ const I18N = {
     prefixBarLabel:'Regla:',chipCustom:'Personalizado',chipAll:'Todos',
     navLblScan:'Escanear',navLblSettings:'Ajustes',
     shPrefix:'Filtro de Prefijo',lblPreset:'Seleccionar Ajuste Predet.',
-    optML:'MercadoLibre (prefijo: 465)',optJT:'J&T Express (prefijo: GC, JMX)',
+    optML:'MercadoLibre (prefijo: 46)',optJT:'J&T Express (prefijo: GC, JMX)',
     optCustom:'Prefijo personalizado...',optAll:'-- Aceptar todos los códigos --',
     lblCurPrefix:'Prefijo Activo',lblPrefixSub:'Vacío = acepta todo',
     lblCustomPrefix:'Prefijos personalizados (separados por coma)',
@@ -437,7 +437,7 @@ const DB_KEY='pda_v3_records', SET_KEY='pda_v3_settings', PENDING_KEY='pda_v3_pe
 let records=[], pendingSync=[], nextId=1, isOnline=navigator.onLine;
 let scanActive=false, toastTimerId=null, uiLang='zh';
 let cfg={
-  presetKey:'ML', prefixes:['465'], minLen:10, maxLen:13,
+  presetKey:'ML', prefixes:['46'], minLen:10, maxLen:13,
   continuous:false, voiceEnabled:true, voiceLang:'zh',
   ghOwner:'', ghRepo:'', ghToken:'', ghBranch:'main', ghDir:'backups'
 };
