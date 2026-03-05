@@ -143,9 +143,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
   <span class="appbar-title" id="appTitle">防重复扫描</span>
   <div class="appbar-actions">
     <div class="lang-switcher">
-      <button class="lang-pill active" onclick="setLang('zh')">中</button>
+      <button class="lang-pill" onclick="setLang('zh')">中</button>
       <button class="lang-pill" onclick="setLang('en')">EN</button>
-      <button class="lang-pill" onclick="setLang('es')">ES</button>
+      <button class="lang-pill active" onclick="setLang('es')">ES</button>
     </div>
     <button class="icon-btn" onclick="toggleMenu()">⋮</button>
   </div>
@@ -198,7 +198,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
     <div class="setting-row col">
       <div class="setting-label" id="lblPreset">选择预设规则</div>
       <select class="s-select" id="presetSelect" onchange="applyPreset()">
-        <option value="ML" id="optML">MercadoLibre（前缀：465）</option>
+        <option value="ML" id="optML">MercadoLibre（前缀：46）</option>
         <option value="JT" id="optJT">J&amp;T Express（前缀：GC, JMX）</option>
         <option value="custom" id="optCustom">自定义前缀...</option>
         <option value="" id="optAll">-- 接受所有条码（无限制）--</option>
@@ -210,7 +210,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
     </div>
     <div class="setting-row col" id="customPrefixRow" style="display:none">
       <div class="setting-label" id="lblCustomPrefix">自定义前缀（逗号分隔）</div>
-      <input class="s-input full" id="customPrefixInput" placeholder="如：46, GC, JMX">
+      <input class="s-input full" id="customPrefixInput" placeholder="如：465, GC, JMX">
     </div>
   </div>
 
@@ -233,8 +233,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
     <div class="setting-row col">
       <div class="setting-label" id="lblVoiceLang">播报语言</div>
       <div class="lang-opts">
-        <label class="lang-opt"><input type="radio" name="lang" value="zh" id="langZh" checked> 中文</label>
-        <label class="lang-opt"><input type="radio" name="lang" value="es" id="langEs"> Español</label>
+        <label class="lang-opt"><input type="radio" name="lang" value="zh" id="langZh"> 中文</label>
+        <label class="lang-opt"><input type="radio" name="lang" value="es" id="langEs" checked> Español</label>
       </div>
     </div>
     <div class="setting-row"><div class="setting-label" id="lblVoiceTest">试听效果</div><button class="test-btn" id="btnVoiceTest" onclick="testVoice()">▶ 试听</button></div>
@@ -250,14 +250,14 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
         💡 <strong>GitHub 存储说明：</strong><br>
         通过 GitHub Contents API 将备份文件写入指定仓库。<br>
         需要 Personal Access Token（repo 权限）。<br>
-        文件保存至仓库的 /backups/ 目录。
+        文件按日期文件夹自动保存：backups/<strong>20260304</strong>/文件名.txt
       </div>
     </div>
     <div class="setting-row col"><div class="setting-label" id="lblGhOwner">GitHub 用户名 / 组织</div><input class="s-input full" id="ghOwner" placeholder="your-username"></div>
     <div class="setting-row col"><div class="setting-label" id="lblGhRepo">仓库名称</div><input class="s-input full" id="ghRepo" placeholder="my-scans-backup"></div>
     <div class="setting-row col"><div class="setting-label" id="lblGhToken">Personal Access Token</div><input class="s-input full" id="ghToken" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"></div>
     <div class="setting-row col"><div class="setting-label" id="lblGhBranch">分支</div><input class="s-input full" id="ghBranch" placeholder="main" value="main"></div>
-    <div class="setting-row col"><div class="setting-label" id="lblGhDir">备份目录</div><input class="s-input full" id="ghDir" placeholder="backups" value="backups"></div>
+    <div class="setting-row col"><div class="setting-label" id="lblGhDir">根目录名（日期子文件夹自动创建）</div><input class="s-input full" id="ghDir" placeholder="backups" value="backups"></div>
     <div class="setting-row">
       <div><div class="setting-label" id="lblGhTest">连接测试</div><span class="gh-status" id="githubStatus" style="display:none"></span></div>
       <button class="test-btn" id="btnGhTest" onclick="testGitHub()">测试连接</button>
@@ -323,10 +323,10 @@ const I18N = {
     lblVoiceLang:'播报语言',lblVoiceTest:'试听效果',btnVoiceTest:'▶ 试听',
     shGithub:'GitHub 云备份',
     githubWarning:'⚠️ 配置仅保存在本设备浏览器中，不写入代码文件，换设备需重新填写一次。',
-    githubInfo:'💡 <strong>GitHub 存储说明：</strong><br>通过 GitHub Contents API 将备份文件写入指定仓库。<br>需要 Personal Access Token（repo 权限）。<br>文件保存至仓库的 /backups/ 目录。',
+    githubInfo:'💡 <strong>GitHub 存储说明：</strong><br>通过 GitHub Contents API 将备份文件写入指定仓库。<br>需要 Personal Access Token（repo 权限）。<br>文件按日期文件夹保存：backups/20260304/文件名.txt',
     lblGhOwner:'GitHub 用户名 / 组织',lblGhRepo:'仓库名称',
     lblGhToken:'Personal Access Token',lblGhBranch:'分支',
-    lblGhDir:'备份目录',lblGhTest:'连接测试',btnGhTest:'测试连接',
+    lblGhDir:'根目录（日期子文件夹自动创建）',lblGhTest:'连接测试',btnGhTest:'测试连接',
     shExport:'导出设置',lblFileTpl:'文件名模板',
     lblFileTplSub:'规则：scan_export_前缀_总数_时间戳',
     lblExportPreview:'示例预览',btnSave:'保 存 设 置',
@@ -365,10 +365,10 @@ const I18N = {
     lblVoiceLang:'Language',lblVoiceTest:'Test voice',btnVoiceTest:'▶ Test',
     shGithub:'GitHub Cloud Backup',
     githubWarning:'⚠️ Config is saved in this browser only. Re-enter on another device.',
-    githubInfo:'💡 <strong>GitHub Storage:</strong><br>Backup files are written to a GitHub repo via the Contents API.<br>Requires a Personal Access Token with repo permission.<br>Files are saved to /backups/ in the repo.',
+    githubInfo:'💡 <strong>GitHub Storage:</strong><br>Backup files are written to a GitHub repo via the Contents API.<br>Requires a Personal Access Token with repo permission.<br>Files are organized by date folder: backups/20260304/filename.txt',
     lblGhOwner:'GitHub Username / Org',lblGhRepo:'Repository Name',
     lblGhToken:'Personal Access Token',lblGhBranch:'Branch',
-    lblGhDir:'Backup Directory',lblGhTest:'Connection Test',btnGhTest:'Test Connection',
+    lblGhDir:'Root Directory (date subfolder auto-created)',lblGhTest:'Connection Test',btnGhTest:'Test Connection',
     shExport:'Export Settings',lblFileTpl:'Filename Template',
     lblFileTplSub:'Pattern: scan_export_prefix_count_timestamp',
     lblExportPreview:'Preview',btnSave:'S A V E  S E T T I N G S',
@@ -407,10 +407,10 @@ const I18N = {
     lblVoiceLang:'Idioma',lblVoiceTest:'Probar voz',btnVoiceTest:'▶ Probar',
     shGithub:'Copia de Seguridad GitHub',
     githubWarning:'⚠️ La config solo se guarda en este navegador. Vuelve a ingresar en otro dispositivo.',
-    githubInfo:'💡 <strong>Almacenamiento GitHub:</strong><br>Los archivos se escriben en un repositorio via Contents API.<br>Requiere Token de Acceso Personal con permiso repo.<br>Los archivos se guardan en /backups/ del repositorio.',
+    githubInfo:'💡 <strong>Almacenamiento GitHub:</strong><br>Los archivos se escriben en un repositorio via Contents API.<br>Requiere Token de Acceso Personal con permiso repo.<br>Los archivos se organizan por carpeta de fecha: backups/20260304/archivo.txt',
     lblGhOwner:'Usuario / Organización GitHub',lblGhRepo:'Nombre del Repositorio',
     lblGhToken:'Personal Access Token',lblGhBranch:'Rama',
-    lblGhDir:'Directorio de Respaldo',lblGhTest:'Prueba de Conexión',btnGhTest:'Probar Conexión',
+    lblGhDir:'Directorio Raíz (subcarpeta de fecha automática)',lblGhTest:'Prueba de Conexión',btnGhTest:'Probar Conexión',
     shExport:'Ajustes de Exportación',lblFileTpl:'Plantilla de Nombre',
     lblFileTplSub:'Patrón: scan_export_prefijo_cantidad_timestamp',
     lblExportPreview:'Vista previa',btnSave:'G U A R D A R  A J U S T E S',
@@ -435,10 +435,10 @@ const I18N = {
 // ── STATE ─────────────────────────────────────────────────────────────────────
 const DB_KEY='pda_v3_records', SET_KEY='pda_v3_settings', PENDING_KEY='pda_v3_pending';
 let records=[], pendingSync=[], nextId=1, isOnline=navigator.onLine;
-let scanActive=false, toastTimerId=null, uiLang='zh';
+let scanActive=false, toastTimerId=null, uiLang='es';
 let cfg={
   presetKey:'ML', prefixes:['46'], minLen:10, maxLen:13,
-  continuous:false, voiceEnabled:true, voiceLang:'zh',
+  continuous:false, voiceEnabled:true, voiceLang:'es',
   ghOwner:'', ghRepo:'', ghToken:'', ghBranch:'main', ghDir:'backups'
 };
 
@@ -617,15 +617,17 @@ function testVoice(){
   const l=document.querySelector('input[name="lang"]:checked')?.value||'zh';
   const saved=cfg.voiceLang; cfg.voiceLang=l;
   speakCount(records.length||88);
-  cfg.voiceLang=saved;
+  setTimeout(()=>{cfg.voiceLang=saved;},500);
 }
 
 // ── GITHUB STORAGE ────────────────────────────────────────────────────────────
 async function uploadGitHub(content, filename){
   if(!cfg.ghOwner||!cfg.ghRepo||!cfg.ghToken) return{ok:false,msg:'GitHub 未配置'};
   try{
-    const dir=(cfg.ghDir||'backups').replace(/^\//,'').replace(/\/$/,'');
-    const path=dir+'/'+filename;
+    const base=(cfg.ghDir||'backups').replace(/^\//,'').replace(/\/$/,'');
+    const now=new Date();
+    const dateFolder=`${now.getFullYear()}${p(now.getMonth()+1)}${p(now.getDate())}`;
+    const path=`${base}/${dateFolder}/${filename}`;
     const apiUrl=`https://api.github.com/repos/${cfg.ghOwner}/${cfg.ghRepo}/contents/${path}`;
     const branch=cfg.ghBranch||'main';
     const headers={
@@ -638,7 +640,7 @@ async function uploadGitHub(content, filename){
       const check=await fetch(apiUrl+'?ref='+branch,{headers});
       if(check.ok){const j=await check.json();sha=j.sha;}
     }catch{}
-    const body={message:`PDA scan backup: ${filename}`,content:btoa(unescape(encodeURIComponent(content))),branch};
+    const body={message:`PDA scan backup: ${dateFolder}/${filename}`,content:btoa(unescape(encodeURIComponent(content))),branch};
     if(sha) body.sha=sha;
     const res=await fetch(apiUrl,{method:'PUT',headers,body:JSON.stringify(body)});
     if([200,201].includes(res.status)) return{ok:true};
@@ -752,7 +754,7 @@ function applyCfgToUI(){
   document.getElementById('ghDir').value=cfg.ghDir||'backups';
   document.getElementById('continuousToggle').className='toggle-wrap'+(cfg.continuous?' on':'');
   document.getElementById('voiceToggle').className='toggle-wrap'+(cfg.voiceEnabled?' on':'');
-  document.getElementById(cfg.voiceLang==='es'?'langEs':'langZh').checked=true;
+  document.getElementById(cfg.voiceLang==='zh'?'langZh':'langEs').checked=true;
   updatePrefixDisplay(); toggleCustomRow(); updateExportPreview();
 }
 function applyPreset(){
