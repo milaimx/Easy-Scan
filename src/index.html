@@ -198,7 +198,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
     <div class="setting-row col">
       <div class="setting-label" id="lblPreset">选择预设规则</div>
       <select class="s-select" id="presetSelect" onchange="applyPreset()">
-        <option value="ML" id="optML">MercadoLibre（前缀：465）</option>
+        <option value="ML" id="optML">MercadoLibre（前缀：46）</option>
         <option value="JT" id="optJT">J&amp;T Express（前缀：GC, JMX）</option>
         <option value="custom" id="optCustom">自定义前缀...</option>
         <option value="" id="optAll">-- 接受所有条码（无限制）--</option>
@@ -233,8 +233,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
     <div class="setting-row col">
       <div class="setting-label" id="lblVoiceLang">播报语言</div>
       <div class="lang-opts">
-        <label class="lang-opt"><input type="radio" name="lang" value="zh" id="langZh" checked> 中文</label>
-        <label class="lang-opt"><input type="radio" name="lang" value="es" id="langEs"> Español</label>
+        <label class="lang-opt"><input type="radio" name="lang" value="zh" id="langZh"> 中文</label>
+        <label class="lang-opt"><input type="radio" name="lang" value="es" id="langEs" checked> Español</label>
       </div>
     </div>
     <div class="setting-row"><div class="setting-label" id="lblVoiceTest">试听效果</div><button class="test-btn" id="btnVoiceTest" onclick="testVoice()">▶ 试听</button></div>
@@ -298,7 +298,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 <script>
 // ── PRESETS ───────────────────────────────────────────────────────────────────
 const PRESETS = {
-  ML: { name:'MercadoLibre', prefixes:['465'], minLen:10, maxLen:13 },
+  ML: { name:'MercadoLibre', prefixes:['46'], minLen:10, maxLen:13 },
   JT: { name:'JT Express',   prefixes:['GC','JMX'], minLen:14, maxLen:19 }
 };
 
@@ -313,7 +313,7 @@ const I18N = {
     prefixBarLabel:'选择规则:',chipCustom:'自定义',chipAll:'全部',
     navLblScan:'扫描',navLblSettings:'设置',
     shPrefix:'前缀过滤规则',lblPreset:'选择预设规则',
-    optML:'MercadoLibre（前缀：465）',optJT:'J&T Express（前缀：GC, JMX）',
+    optML:'MercadoLibre（前缀：46）',optJT:'J&T Express（前缀：GC, JMX）',
     optCustom:'自定义前缀...',optAll:'-- 接受所有条码（无限制）--',
     lblCurPrefix:'当前生效前缀',lblPrefixSub:'空=接受所有条码',
     lblCustomPrefix:'自定义前缀（逗号分隔）',
@@ -355,7 +355,7 @@ const I18N = {
     prefixBarLabel:'Rule:',chipCustom:'Custom',chipAll:'All',
     navLblScan:'Scan',navLblSettings:'Settings',
     shPrefix:'Prefix Filter',lblPreset:'Select Preset',
-    optML:'MercadoLibre (prefix: 465)',optJT:'J&T Express (prefix: GC, JMX)',
+    optML:'MercadoLibre (prefix: 46)',optJT:'J&T Express (prefix: GC, JMX)',
     optCustom:'Custom prefix...',optAll:'-- Accept all barcodes --',
     lblCurPrefix:'Active Prefix',lblPrefixSub:'Empty = accept all',
     lblCustomPrefix:'Custom prefixes (comma-separated)',
@@ -397,7 +397,7 @@ const I18N = {
     prefixBarLabel:'Regla:',chipCustom:'Personalizado',chipAll:'Todos',
     navLblScan:'Escanear',navLblSettings:'Ajustes',
     shPrefix:'Filtro de Prefijo',lblPreset:'Seleccionar Ajuste Predet.',
-    optML:'MercadoLibre (prefijo: 465)',optJT:'J&T Express (prefijo: GC, JMX)',
+    optML:'MercadoLibre (prefijo: 46)',optJT:'J&T Express (prefijo: GC, JMX)',
     optCustom:'Prefijo personalizado...',optAll:'-- Aceptar todos los códigos --',
     lblCurPrefix:'Prefijo Activo',lblPrefixSub:'Vacío = acepta todo',
     lblCustomPrefix:'Prefijos personalizados (separados por coma)',
@@ -437,7 +437,7 @@ const DB_KEY='pda_v3_records', SET_KEY='pda_v3_settings', PENDING_KEY='pda_v3_pe
 let records=[], pendingSync=[], nextId=1, isOnline=navigator.onLine;
 let scanActive=false, toastTimerId=null, uiLang='es';
 let cfg={
-  presetKey:'ML', prefixes:['465'], minLen:10, maxLen:13,
+  presetKey:'ML', prefixes:['46'], minLen:10, maxLen:13,
   continuous:false, voiceEnabled:true, voiceLang:'es',
   ghOwner:'', ghRepo:'', ghToken:'', ghBranch:'main', ghDir:'backups'
 };
@@ -617,7 +617,7 @@ function testVoice(){
   const l=document.querySelector('input[name="lang"]:checked')?.value||'zh';
   const saved=cfg.voiceLang; cfg.voiceLang=l;
   speakCount(records.length||88);
-  cfg.voiceLang=saved;
+  setTimeout(()=>{cfg.voiceLang=saved;},500);
 }
 
 // ── GITHUB STORAGE ────────────────────────────────────────────────────────────
