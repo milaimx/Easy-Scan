@@ -167,6 +167,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
     <span class="prefix-bar-label" id="prefixBarLabel">选择规则:</span>
     <button class="prefix-chip active" id="chipML" onclick="quickSetPrefix('ML')">MERCADOLIBRE</button>
     <button class="prefix-chip" id="chipJT" onclick="quickSetPrefix('JT')">J&amp;T Express</button>
+    <button class="prefix-chip" id="chipIMILE" onclick="quickSetPrefix('IMILE')">iMile</button>
     <button class="prefix-chip" id="chipCustom" onclick="quickSetPrefix('custom')">自定义</button>
     <button class="prefix-chip all" id="chipAll" onclick="quickSetPrefix('')">全部</button>
   </div>
@@ -200,6 +201,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
       <select class="s-select" id="presetSelect" onchange="applyPreset()">
         <option value="ML" id="optML">MercadoLibre（前缀：46）</option>
         <option value="JT" id="optJT">J&amp;T Express（前缀：GC, JMX）</option>
+        <option value="IMILE" id="optIMILE">iMile（前缀：48, GC）</option>
         <option value="custom" id="optCustom">自定义前缀...</option>
         <option value="" id="optAll">-- 接受所有条码（无限制）--</option>
       </select>
@@ -298,8 +300,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 <script>
 // ── PRESETS ───────────────────────────────────────────────────────────────────
 const PRESETS = {
-  ML: { name:'MercadoLibre', prefixes:['46'], minLen:10, maxLen:13 },
-  JT: { name:'JT Express',   prefixes:['GC','JMX'], minLen:14, maxLen:19 }
+  ML:    { name:'MercadoLibre', prefixes:['46'],       minLen:10, maxLen:13 },
+  JT:    { name:'JT Express',   prefixes:['GC','JMX'], minLen:14, maxLen:19 },
+  IMILE: { name:'iMile',        prefixes:['48','GC'],  minLen:13, maxLen:19 }
 };
 
 // ── I18N ──────────────────────────────────────────────────────────────────────
@@ -313,7 +316,7 @@ const I18N = {
     prefixBarLabel:'选择规则:',chipCustom:'自定义',chipAll:'全部',
     navLblScan:'扫描',navLblSettings:'设置',
     shPrefix:'前缀过滤规则',lblPreset:'选择预设规则',
-    optML:'MercadoLibre（前缀：46）',optJT:'J&T Express（前缀：GC, JMX）',
+    optML:'MercadoLibre（前缀：46）',optJT:'J&T Express（前缀：GC, JMX）',optIMILE:'iMile（前缀：48, GC）',
     optCustom:'自定义前缀...',optAll:'-- 接受所有条码（无限制）--',
     lblCurPrefix:'当前生效前缀',lblPrefixSub:'空=接受所有条码',
     lblCustomPrefix:'自定义前缀（逗号分隔）',
@@ -355,7 +358,7 @@ const I18N = {
     prefixBarLabel:'Rule:',chipCustom:'Custom',chipAll:'All',
     navLblScan:'Scan',navLblSettings:'Settings',
     shPrefix:'Prefix Filter',lblPreset:'Select Preset',
-    optML:'MercadoLibre (prefix: 46)',optJT:'J&T Express (prefix: GC, JMX)',
+    optML:'MercadoLibre (prefix: 46)',optJT:'J&T Express (prefix: GC, JMX)',optIMILE:'iMile (prefix: 48, GC)',
     optCustom:'Custom prefix...',optAll:'-- Accept all barcodes --',
     lblCurPrefix:'Active Prefix',lblPrefixSub:'Empty = accept all',
     lblCustomPrefix:'Custom prefixes (comma-separated)',
@@ -397,7 +400,7 @@ const I18N = {
     prefixBarLabel:'Regla:',chipCustom:'Personalizado',chipAll:'Todos',
     navLblScan:'Escanear',navLblSettings:'Ajustes',
     shPrefix:'Filtro de Prefijo',lblPreset:'Seleccionar Ajuste Predet.',
-    optML:'MercadoLibre (prefijo: 46)',optJT:'J&T Express (prefijo: GC, JMX)',
+    optML:'MercadoLibre (prefijo: 46)',optJT:'J&T Express (prefijo: GC, JMX)',optIMILE:'iMile (prefijo: 48, GC)',
     optCustom:'Prefijo personalizado...',optAll:'-- Aceptar todos los códigos --',
     lblCurPrefix:'Prefijo Activo',lblPrefixSub:'Vacío = acepta todo',
     lblCustomPrefix:'Prefijos personalizados (separados por coma)',
@@ -474,7 +477,7 @@ function applyI18N(){
   document.getElementById('chipCustom').textContent=t('chipCustom');
   document.getElementById('chipAll').textContent=t('chipAll');
   // select options
-  ['optML','optJT','optCustom','optAll'].forEach(id=>{
+  ['optML','optJT','optIMILE','optCustom','optAll'].forEach(id=>{
     const el=document.getElementById(id);
     if(el) el.textContent=t(id);
   });
@@ -546,10 +549,11 @@ function quickSetPrefix(key){
 }
 
 function updateChipBar(){
-  ['chipML','chipJT','chipCustom','chipAll'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  ['chipML','chipJT','chipIMILE','chipCustom','chipAll'].forEach(id=>document.getElementById(id).classList.remove('active'));
   const k=cfg.presetKey;
   if(k==='ML') document.getElementById('chipML').classList.add('active');
   else if(k==='JT') document.getElementById('chipJT').classList.add('active');
+  else if(k==='IMILE') document.getElementById('chipIMILE').classList.add('active');
   else if(k==='custom') document.getElementById('chipCustom').classList.add('active');
   else document.getElementById('chipAll').classList.add('active');
 }
