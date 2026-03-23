@@ -206,9 +206,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 <div class="toast" id="toast"><span class="toast-icon" id="toastIcon"></span><span class="toast-msg" id="toastMsg"></span></div>
 
 <div class="overflow-menu" id="overflowMenu">
-  <div class="menu-item" id="menuExport" onclick="exportCurrentBatch();closeMenu()">导出本批</div>
-  <div class="menu-item" id="menuExportAll" onclick="exportAllBatches();closeMenu()">导出全部批次</div>
-  <div class="menu-item" id="menuClose" onclick="closeMenu()">关闭菜单</div>
+  <div class="menu-item" id="menuEndBatch" onclick="confirmEndBatch();closeMenu()">Finalizar Este Lote</div>
+  <div class="menu-item" id="menuClose" onclick="closeMenu()">Cerrar Menú</div>
 </div>
 
 <div class="appbar">
@@ -266,11 +265,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
       <div class="empty-text" id="emptyText">Sin registros<br>Toca Escanear para comenzar</div>
     </div>
   </div>
-  <!-- Bottom action bar: export current + end batch -->
+  <!-- Bottom action bar: end batch only -->
   <div class="batch-end-bar">
-    <button class="batch-end-btn export-cur" id="btnExportCur" onclick="exportCurrentBatch()">
-      <span>📤</span><span id="lblExportCur">Exportar</span>
-    </button>
     <button class="batch-end-btn archive" id="btnEndBatch" onclick="confirmEndBatch()">
       <span>📦</span><span id="lblEndBatch">Finalizar Lote</span>
     </button>
@@ -376,6 +372,16 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
     </div>
   </div>
 
+  <div class="section-header" id="shResetAll" style="color:var(--accent)">Reiniciar Todo</div>
+  <div class="section">
+    <div class="setting-row" style="background:#FFEBEE;">
+      <div><div class="setting-label" id="lblResetAll" style="color:var(--red)">Finalizar y limpiar todos los lotes</div><div class="setting-sub" id="lblResetAllSub">Borra el lote actual + todos los lotes archivados, reinicia el total acumulado a cero</div></div>
+    </div>
+    <div class="setting-row">
+      <button style="width:100%;padding:13px;background:var(--accent);color:white;border:none;border-radius:4px;font-size:15px;font-weight:700;cursor:pointer;font-family:var(--sans)" id="btnResetAll" onclick="confirmResetAll()">⚠ Reiniciar Todo</button>
+    </div>
+  </div>
+
   <button class="save-btn" id="btnSave" onclick="saveSettings()">G U A R D A R  A J U S T E S</button>
 </div>
 
@@ -435,8 +441,8 @@ const I18N = {
     shExport:'导出设置', lblFileTpl:'文件名模板',
     lblFileTplSub:'规则：scan_export_前缀_批次_总数_时间戳',
     btnSave:'保 存 设 置',
-    menuExport:'导出本批', menuExportAll:'导出全部批次', menuClose:'关闭菜单',
-    toastScanOk:'扫描成功：', toastDup:'重复！「%s」已在第 %n 条扫入',
+    menuEndBatch:'结束本批次', menuClose:'关闭菜单',
+    toastScanOk:'扫描成功：', toastDup:'重复！「%s」已在第 %n 条扫入（本批）', toastDupBatch:'跨批次重复！「%s」已存在于第 %b 批（第 %n 条）',
     toastLen:'条码长度 %l 超出范围 (%min–%max)',
     toastPrefix:'前缀不匹配%p：%s', toastNoData:'暂无数据', toastNoBatches:'没有已归档批次',
     toastExported:'已导出 %n 条 → %f', toastSaved:'设置已保存',
@@ -455,6 +461,7 @@ const I18N = {
     confirmClearAllTitle:'清除所有批次历史？',
     confirmClearAllBody:'将删除所有 %n 个已归档批次（共 %c 条），此操作不可撤销。',
     clearAllBtn:'全部清除',
+    shResetAll:'重置所有数据', lblResetAll:'结束并清空所有批次', lblResetAllSub:'清空本批 + 所有历史批次，重置累计总数为零', btnResetAll:'⚠ 全部重置',
   },
   en:{
     appTitle:'Anti-Dup Scanner',
@@ -486,8 +493,8 @@ const I18N = {
     shExport:'Export Settings', lblFileTpl:'Filename Template',
     lblFileTplSub:'Pattern: scan_export_prefix_batch_count_timestamp',
     btnSave:'S A V E  S E T T I N G S',
-    menuExport:'Export This Batch', menuExportAll:'Export All Batches', menuClose:'Close Menu',
-    toastScanOk:'Scanned: ', toastDup:'Duplicate! "%s" already at #%n',
+    menuEndBatch:'End This Batch', menuClose:'Close Menu',
+    toastScanOk:'Scanned: ', toastDup:'Duplicate! "%s" already in this batch at #%n', toastDupBatch:'Cross-batch duplicate! "%s" exists in Batch %b (record #%n)',
     toastLen:'Length %l out of range (%min–%max)',
     toastPrefix:'Prefix mismatch%p: %s', toastNoData:'No data', toastNoBatches:'No archived batches',
     toastExported:'Exported %n records → %f', toastSaved:'Settings saved',
@@ -506,6 +513,7 @@ const I18N = {
     confirmClearAllTitle:'Clear all batch history?',
     confirmClearAllBody:'This will delete all %n archived batches (%c records). Cannot be undone.',
     clearAllBtn:'Clear All',
+    shResetAll:'Reset All Data', lblResetAll:'End & clear all batches', lblResetAllSub:'Clears current batch + all archived batches, resets cumulative total to zero', btnResetAll:'⚠ Reset Everything',
   },
   es:{
     appTitle:'Escáner Anti-Dup',
@@ -537,8 +545,8 @@ const I18N = {
     shExport:'Ajustes de Exportación', lblFileTpl:'Plantilla de Nombre',
     lblFileTplSub:'Patrón: scan_export_prefijo_lote_cantidad_timestamp',
     btnSave:'G U A R D A R  A J U S T E S',
-    menuExport:'Exportar Este Lote', menuExportAll:'Exportar Todos los Lotes', menuClose:'Cerrar Menú',
-    toastScanOk:'Escaneado: ', toastDup:'¡Duplicado! "%s" ya en #%n',
+    menuEndBatch:'Finalizar Este Lote', menuClose:'Cerrar Menú',
+    toastScanOk:'Escaneado: ', toastDup:'¡Duplicado! "%s" ya en este lote #%n', toastDupBatch:'¡Duplicado entre lotes! "%s" existe en Lote %b (registro #%n)',
     toastLen:'Longitud %l fuera de rango (%min–%max)',
     toastPrefix:'Prefijo no coincide%p: %s', toastNoData:'Sin datos', toastNoBatches:'Sin lotes archivados',
     toastExported:'%n registros exportados → %f', toastSaved:'Ajustes guardados',
@@ -557,6 +565,7 @@ const I18N = {
     confirmClearAllTitle:'¿Limpiar todo el historial?',
     confirmClearAllBody:'Se eliminarán los %n lotes archivados (%c registros en total). Esta acción no se puede deshacer.',
     clearAllBtn:'Limpiar Todo',
+    shResetAll:'Reiniciar Todo', lblResetAll:'Finalizar y limpiar todos los lotes', lblResetAllSub:'Borra el lote actual + todos los lotes archivados, reinicia el total acumulado a cero', btnResetAll:'⚠ Reiniciar Todo',
   }
 };
 
@@ -583,15 +592,15 @@ function setLang(lang){
 
 function applyI18N(){
   const ids=['appTitle','lblBatchCount','lblTotalCount','thNum','thDate','prefixBarLabel',
-    'lblExportCur','lblEndBatch','navLblScan','navLblHistory','navLblSettings',
+    'lblEndBatch','navLblScan','navLblHistory','navLblSettings',
     'lblHistorySummary','lblLotes','lblItems',
     'shPrefix','lblPreset','lblCurPrefix','lblPrefixSub','lblCustomPrefix',
     'shBarcode','lblMinLen','lblMaxLen','lblContinuous','lblContinuousSub',
     'shVoice','lblVoice','lblVoiceSub','lblVoiceLang','lblVoiceTest',
     'shGithub','lblGhOwner','lblGhRepo','lblGhToken','lblGhBranch','lblGhDir','lblGhTest',
     'shExport','lblFileTpl','lblFileTplSub',
-    'menuExport','menuExportAll','menuClose',
-    'btnVoiceTest','btnGhTest','btnSave','btnExportAll'];
+    'menuEndBatch','menuClose',
+    'btnVoiceTest','btnGhTest','btnSave','btnExportAll','shResetAll','lblResetAll','lblResetAllSub','btnResetAll'];
   ids.forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=t(id);});
   document.getElementById('thBarcode').textContent=t('thBarcode');
   document.getElementById('githubWarning').textContent=t('githubWarning');
@@ -710,6 +719,7 @@ function processBarcode(code){
       vibrate(200); speakError(); return;
     }
   }
+  // Check duplicate in current batch
   const dup=records.find(r=>r.barcode===code);
   if(dup){
     toast('error','🔴',t('toastDup').replace('%s',code).replace('%n',dup.id));
@@ -717,6 +727,14 @@ function processBarcode(code){
     const row=document.getElementById('row-'+dup.id);
     if(row){row.classList.add('dup');row.scrollIntoView({behavior:'smooth',block:'center'});setTimeout(()=>row.classList.remove('dup'),2000);}
     return;
+  }
+  // Check duplicate across archived batches
+  for(let i=0;i<batches.length;i++){
+    const bdup=batches[i].records.find(r=>r.barcode===code);
+    if(bdup){
+      toast('error','🚨',t('toastDupBatch').replace('%s',code).replace('%b',batches[i].num).replace('%n',bdup.id));
+      vibrate([200,100,200]);speakError();return;
+    }
   }
   const now=new Date();
   const rec={id:nextId++,barcode:code,time:fmtTime(now),synced:false};
@@ -860,6 +878,22 @@ function doArchiveBatch(batchNum, ts){
   updateNavBadge(); renderBatchHistory();
   closeModal();
   toast('info','📦',t('toastBatchArchived').replace('%n',batchNum).replace('%c',batches[batches.length-1].records.length));
+}
+
+function confirmResetAll(){
+  const totalBatches=batches.length;
+  const totalItems=records.length+batches.reduce((s,b)=>s+b.records.length,0);
+  if(totalBatches===0&&records.length===0){toast('warn','⚠️',t('toastNoData'));return;}
+  showModal(t('confirmClearAllTitle'),
+    t('confirmClearAllBody').replace('%n',totalBatches).replace('%c',totalItems),
+    [{label:t('cancelBtn'),cls:'flat',fn:closeModal},{label:t('clearAllBtn'),cls:'raised',fn:doResetAll}]);
+}
+function doResetAll(){
+  records=[];batches=[];nextId=1;pendingSync=[];currentBatchNum=1;
+  saveRecords();saveBatches();savePending();
+  updateBatchBadge();updateCounters();renderList();updateNetUI();
+  updateNavBadge();renderBatchHistory();closeModal();
+  toast('info','🔄',uiLang==='es'?'Todo reiniciado':uiLang==='en'?'All data reset':'所有数据已重置');
 }
 
 function updateNavBadge(){
