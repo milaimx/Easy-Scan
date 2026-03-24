@@ -192,10 +192,10 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .menu-item{padding:16px 24px;font-size:16px;cursor:pointer;color:var(--text);transition:background .1s;border-bottom:1px solid var(--border)}
 .menu-item:last-child{border-bottom:none}
 .menu-item:active{background:var(--surface)}
-.gh-status{font-size:12px;font-family:var(--mono);padding:4px 8px;border-radius:3px;display:inline-block}
-.gh-status.ok{background:var(--green-bg);color:var(--green)}
-.gh-status.fail{background:var(--red-bg);color:var(--red)}
-.gh-status.testing{background:var(--orange-bg);color:var(--orange)}
+.dav-status{font-size:12px;font-family:var(--mono);padding:4px 8px;border-radius:3px;display:inline-block}
+.dav-status.ok{background:var(--green-bg);color:var(--green)}
+.dav-status.fail{background:var(--red-bg);color:var(--red)}
+.dav-status.testing{background:var(--orange-bg);color:var(--orange)}
 
 ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border)}
 </style>
@@ -339,27 +339,25 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
     <div class="setting-row"><div class="setting-label" id="lblVoiceTest">Probar voz</div><button class="test-btn" id="btnVoiceTest" onclick="testVoice()">▶ Probar</button></div>
   </div>
 
-  <div class="section-header" id="shGithub">Copia de Seguridad GitHub</div>
+  <div class="section-header" id="shWebdav">Copia de Seguridad WebDAV</div>
   <div class="section">
     <div class="setting-row" style="background:#FFF8E1;border-left:3px solid #FF8F00;padding-left:13px">
-      <div style="font-size:12px;color:#E65100;line-height:1.5" id="githubWarning">⚠️ La config solo se guarda en este navegador. Vuelve a ingresar en otro dispositivo.</div>
+      <div style="font-size:12px;color:#E65100;line-height:1.5" id="webdavWarning">⚠️ La config solo se guarda en este navegador. Vuelve a ingresar en otro dispositivo.</div>
     </div>
     <div class="setting-row" style="background:#E3F2FD;padding:10px 16px">
-      <div style="font-size:12px;color:#1565C0;line-height:1.6" id="githubInfo">
-        💡 <strong>Almacenamiento GitHub:</strong><br>
-        Los archivos se escriben en un repositorio via Contents API.<br>
-        Requiere Token de Acceso Personal con permiso repo.<br>
-        Estructura: backups/<strong>20260304</strong>/lote_N_archivo.txt
+      <div style="font-size:12px;color:#1565C0;line-height:1.6" id="webdavInfo">
+        💡 <strong>Almacenamiento WebDAV:</strong><br>
+        Los archivos se suben via PUT al servidor WebDAV configurado.<br>
+        Los archivos se organizan por carpeta de fecha: /backups/<strong>20260304</strong>/archivo.txt
       </div>
     </div>
-    <div class="setting-row col"><div class="setting-label" id="lblGhOwner">Usuario / Organización GitHub</div><input class="s-input full" id="ghOwner" placeholder="your-username"></div>
-    <div class="setting-row col"><div class="setting-label" id="lblGhRepo">Nombre del Repositorio</div><input class="s-input full" id="ghRepo" placeholder="my-scans-backup"></div>
-    <div class="setting-row col"><div class="setting-label" id="lblGhToken">Personal Access Token</div><input class="s-input full" id="ghToken" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"></div>
-    <div class="setting-row col"><div class="setting-label" id="lblGhBranch">Rama</div><input class="s-input full" id="ghBranch" placeholder="main" value="main"></div>
-    <div class="setting-row col"><div class="setting-label" id="lblGhDir">Directorio Raíz (subcarpeta de fecha automática)</div><input class="s-input full" id="ghDir" placeholder="backups" value="backups"></div>
+    <div class="setting-row col"><div class="setting-label" id="lblDavUrl">URL del Servidor WebDAV</div><input class="s-input full" id="davUrl" placeholder="https://dav.example.com/remote.php/dav/files/user/" value="https://hakata.infini-cloud.net/dav/" type="url"></div>
+    <div class="setting-row col"><div class="setting-label" id="lblDavUser">Usuario</div><input class="s-input full" id="davUser" placeholder="username"></div>
+    <div class="setting-row col"><div class="setting-label" id="lblDavPass">Contraseña</div><input class="s-input full" id="davPass" type="password" placeholder="••••••"></div>
+    <div class="setting-row col"><div class="setting-label" id="lblDavDir">Directorio Raíz (subcarpeta de fecha automática)</div><input class="s-input full" id="davDir" placeholder="backups" value="backups"></div>
     <div class="setting-row">
-      <div><div class="setting-label" id="lblGhTest">Prueba de Conexión</div><span class="gh-status" id="githubStatus" style="display:none"></span></div>
-      <button class="test-btn" id="btnGhTest" onclick="testGitHub()">Probar Conexión</button>
+      <div><div class="setting-label" id="lblDavTest">Prueba de Conexión</div><span class="dav-status" id="webdavStatus" style="display:none"></span></div>
+      <button class="test-btn" id="btnDavTest" onclick="testWebDAV()">Probar Conexión</button>
     </div>
   </div>
 
@@ -432,12 +430,12 @@ const I18N = {
     lblContinuous:'连续扫码模式', lblContinuousSub:'扫完自动准备下一次',
     shVoice:'语音播报', lblVoice:'扫码后语音报数量', lblVoiceSub:'如「已扫 50 件」',
     lblVoiceLang:'播报语言', lblVoiceTest:'试听', btnVoiceTest:'▶ 试听',
-    shGithub:'GitHub 云备份',
-    githubWarning:'⚠️ 配置仅保存在本设备浏览器中，换设备需重新填写。',
-    githubInfo:'💡 <strong>GitHub 存储：</strong><br>结束批次时自动上传至 GitHub 仓库。<br>需要 Personal Access Token（repo 权限）。<br>结构：backups/<strong>20260304</strong>/批次N_文件名.txt',
-    lblGhOwner:'GitHub 用户名 / 组织', lblGhRepo:'仓库名称',
-    lblGhToken:'Personal Access Token', lblGhBranch:'分支',
-    lblGhDir:'根目录（日期子文件夹自动创建）', lblGhTest:'连接测试', btnGhTest:'测试连接',
+    shWebdav:'WebDAV 云备份',
+    webdavWarning:'⚠️ 配置仅保存在本设备浏览器中，换设备需重新填写。',
+    webdavInfo:'💡 <strong>WebDAV 云备份：</strong><br>结束批次时自动上传至 WebDAV 服务器。<br>按日期文件夹保存：/backups/<strong>20260304</strong>/批次N_文件名.txt',
+    lblDavUrl:'WebDAV 服务器地址', lblDavUser:'用户名',
+    lblDavPass:'密码', lblDavDir:'根目录（日期子文件夹自动创建）',
+    lblDavTest:'连接测试', btnDavTest:'测试连接',
     shExport:'导出设置', lblFileTpl:'文件名模板',
     lblFileTplSub:'规则：scan_export_前缀_批次_总数_时间戳',
     btnSave:'保 存 设 置',
@@ -446,7 +444,7 @@ const I18N = {
     toastLen:'条码长度 %l 超出范围 (%min–%max)',
     toastPrefix:'前缀不匹配%p：%s', toastNoData:'暂无数据', toastNoBatches:'没有已归档批次',
     toastExported:'已导出 %n 条 → %f', toastSaved:'设置已保存',
-    toastGhOk:'GitHub 连接成功！', toastGhFail:'连接失败：',
+    toastGhOk:'WebDAV 连接成功！', toastGhFail:'连接失败：',
     toastBatchArchived:'第 %n 批已归档（%c 条）',
     confirmEndTitle:'结束并归档本批？',
     confirmEndBody:'本批共 %c 条记录将归档为「第 %n 批」，界面清零开始新批次。',
@@ -484,12 +482,12 @@ const I18N = {
     lblContinuous:'Continuous Scan', lblContinuousSub:'Auto-ready after each scan',
     shVoice:'Voice Readout', lblVoice:'Announce count after scan', lblVoiceSub:'e.g. "50 scanned"',
     lblVoiceLang:'Language', lblVoiceTest:'Test voice', btnVoiceTest:'▶ Test',
-    shGithub:'GitHub Cloud Backup',
-    githubWarning:'⚠️ Config saved in this browser only. Re-enter on another device.',
-    githubInfo:'💡 <strong>GitHub Storage:</strong><br>Auto-uploads when a batch is archived.<br>Requires Personal Access Token with repo permission.<br>Structure: backups/<strong>20260304</strong>/batch_N_file.txt',
-    lblGhOwner:'GitHub Username / Org', lblGhRepo:'Repository Name',
-    lblGhToken:'Personal Access Token', lblGhBranch:'Branch',
-    lblGhDir:'Root Directory (date subfolder auto-created)', lblGhTest:'Connection Test', btnGhTest:'Test Connection',
+    shWebdav:'WebDAV Cloud Backup',
+    webdavWarning:'⚠️ Config saved in this browser only. Re-enter on another device.',
+    webdavInfo:'💡 <strong>WebDAV Backup:</strong><br>Auto-uploads when a batch is archived.<br>Files organized by date folder: /backups/<strong>20260304</strong>/batch_N_file.txt',
+    lblDavUrl:'WebDAV Server URL', lblDavUser:'Username',
+    lblDavPass:'Password', lblDavDir:'Root Directory (date subfolder auto-created)',
+    lblDavTest:'Connection Test', btnDavTest:'Test Connection',
     shExport:'Export Settings', lblFileTpl:'Filename Template',
     lblFileTplSub:'Pattern: scan_export_prefix_batch_count_timestamp',
     btnSave:'S A V E  S E T T I N G S',
@@ -498,7 +496,7 @@ const I18N = {
     toastLen:'Length %l out of range (%min–%max)',
     toastPrefix:'Prefix mismatch%p: %s', toastNoData:'No data', toastNoBatches:'No archived batches',
     toastExported:'Exported %n records → %f', toastSaved:'Settings saved',
-    toastGhOk:'GitHub connected!', toastGhFail:'Connection failed: ',
+    toastGhOk:'WebDAV connected!', toastGhFail:'Connection failed: ',
     toastBatchArchived:'Batch %n archived (%c records)',
     confirmEndTitle:'End & archive this batch?',
     confirmEndBody:'%c records will be archived as Batch %n. The scanner will reset for the next batch.',
@@ -536,12 +534,12 @@ const I18N = {
     lblContinuous:'Escaneo Continuo', lblContinuousSub:'Listo automáticamente tras cada escaneo',
     shVoice:'Lectura de Voz', lblVoice:'Anunciar conteo tras escaneo', lblVoiceSub:'p.ej. "50 escaneados"',
     lblVoiceLang:'Idioma', lblVoiceTest:'Probar voz', btnVoiceTest:'▶ Probar',
-    shGithub:'Copia de Seguridad GitHub',
-    githubWarning:'⚠️ La config solo se guarda en este navegador. Vuelve a ingresar en otro dispositivo.',
-    githubInfo:'💡 <strong>Almacenamiento GitHub:</strong><br>Se sube automáticamente al archivar un lote.<br>Requiere Token de Acceso Personal con permiso repo.<br>Estructura: backups/<strong>20260304</strong>/lote_N_archivo.txt',
-    lblGhOwner:'Usuario / Organización GitHub', lblGhRepo:'Nombre del Repositorio',
-    lblGhToken:'Personal Access Token', lblGhBranch:'Rama',
-    lblGhDir:'Directorio Raíz (subcarpeta de fecha automática)', lblGhTest:'Prueba de Conexión', btnGhTest:'Probar Conexión',
+    shWebdav:'Copia de Seguridad WebDAV',
+    webdavWarning:'⚠️ La config solo se guarda en este navegador. Vuelve a ingresar en otro dispositivo.',
+    webdavInfo:'💡 <strong>Copia de Seguridad WebDAV:</strong><br>Se sube automáticamente al archivar un lote.<br>Archivos organizados por carpeta de fecha: /backups/<strong>20260304</strong>/lote_N_archivo.txt',
+    lblDavUrl:'URL del Servidor WebDAV', lblDavUser:'Usuario',
+    lblDavPass:'Contraseña', lblDavDir:'Directorio Raíz (subcarpeta de fecha automática)',
+    lblDavTest:'Prueba de Conexión', btnDavTest:'Probar Conexión',
     shExport:'Ajustes de Exportación', lblFileTpl:'Plantilla de Nombre',
     lblFileTplSub:'Patrón: scan_export_prefijo_lote_cantidad_timestamp',
     btnSave:'G U A R D A R  A J U S T E S',
@@ -550,7 +548,7 @@ const I18N = {
     toastLen:'Longitud %l fuera de rango (%min–%max)',
     toastPrefix:'Prefijo no coincide%p: %s', toastNoData:'Sin datos', toastNoBatches:'Sin lotes archivados',
     toastExported:'%n registros exportados → %f', toastSaved:'Ajustes guardados',
-    toastGhOk:'¡GitHub conectado!', toastGhFail:'Conexión fallida: ',
+    toastGhOk:'¡WebDAV conectado!', toastGhFail:'Conexión fallida: ',
     toastBatchArchived:'Lote %n archivado (%c registros)',
     confirmEndTitle:'¿Finalizar y archivar este lote?',
     confirmEndBody:'%c registros serán archivados como Lote %n. El escáner se reiniciará para el siguiente lote.',
@@ -576,7 +574,7 @@ let scanActive=false, toastTimerId=null, uiLang='es', currentBatchNum=1;
 let cfg={
   presetKey:'ML', prefixes:['46'], minLen:10, maxLen:13,
   continuous:false, voiceEnabled:true, voiceLang:'es',
-  ghOwner:'', ghRepo:'', ghToken:'', ghBranch:'main', ghDir:'backups'
+  davUrl:'https://hakata.infini-cloud.net/dav/', davUser:'', davPass:'', davDir:'backups'
 };
 
 // ── LANGUAGE ──────────────────────────────────────────────────────────────────
@@ -597,14 +595,14 @@ function applyI18N(){
     'shPrefix','lblPreset','lblCurPrefix','lblPrefixSub','lblCustomPrefix',
     'shBarcode','lblMinLen','lblMaxLen','lblContinuous','lblContinuousSub',
     'shVoice','lblVoice','lblVoiceSub','lblVoiceLang','lblVoiceTest',
-    'shGithub','lblGhOwner','lblGhRepo','lblGhToken','lblGhBranch','lblGhDir','lblGhTest',
+    'shWebdav','lblDavUrl','lblDavUser','lblDavPass','lblDavDir','lblDavTest',
     'shExport','lblFileTpl','lblFileTplSub',
     'menuEndBatch','menuClose',
-    'btnVoiceTest','btnGhTest','btnSave','shResetAll','lblResetAll','lblResetAllSub','btnResetAll'];
+    'btnVoiceTest','btnDavTest','btnSave','shResetAll','lblResetAll','lblResetAllSub','btnResetAll'];
   ids.forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=t(id);});
   document.getElementById('thBarcode').textContent=t('thBarcode');
-  document.getElementById('githubWarning').textContent=t('githubWarning');
-  document.getElementById('githubInfo').innerHTML=t('githubInfo');
+  document.getElementById('webdavWarning').textContent=t('webdavWarning');
+  document.getElementById('webdavInfo').innerHTML=t('webdavInfo');
   document.getElementById('chipCustom').textContent=t('chipCustom');
   document.getElementById('chipAll').textContent=t('chipAll');
   ['optML','optJT','optIMILE','optCustom','optAll'].forEach(id=>{
@@ -772,41 +770,42 @@ function testVoice(){
 }
 
 // ── GITHUB ────────────────────────────────────────────────────────────────────
-async function uploadGitHub(content, filename){
-  if(!cfg.ghOwner||!cfg.ghRepo||!cfg.ghToken) return{ok:false,msg:'GitHub 未配置'};
+async function uploadWebDAV(content, filename){
+  if(!cfg.davUrl) return{ok:false,msg:'WebDAV URL not configured'};
   try{
-    const base=(cfg.ghDir||'backups').replace(/^\//,'').replace(/\/$/,'');
+    const base=cfg.davUrl.replace(/\/$/,'');
+    const dir=(cfg.davDir||'backups').replace(/^\//,'').replace(/\/$/,'');
     const now=new Date();
     const dateFolder=`${now.getFullYear()}${p(now.getMonth()+1)}${p(now.getDate())}`;
-    const path=`${base}/${dateFolder}/${filename}`;
-    const apiUrl=`https://api.github.com/repos/${cfg.ghOwner}/${cfg.ghRepo}/contents/${path}`;
-    const branch=cfg.ghBranch||'main';
-    const headers={'Authorization':'token '+cfg.ghToken,'Content-Type':'application/json','Accept':'application/vnd.github.v3+json'};
-    let sha=null;
-    try{const check=await fetch(apiUrl+'?ref='+branch,{headers});if(check.ok){const j=await check.json();sha=j.sha;}}catch{}
-    const body={message:`PDA batch backup: ${dateFolder}/${filename}`,content:btoa(unescape(encodeURIComponent(content))),branch};
-    if(sha) body.sha=sha;
-    const res=await fetch(apiUrl,{method:'PUT',headers,body:JSON.stringify(body)});
-    if([200,201].includes(res.status)) return{ok:true};
-    const err=await res.json().catch(()=>({}));
-    return{ok:false,msg:`HTTP ${res.status}: ${err.message||'error'}`};
+    // Ensure directory exists (MKCOL, ignore errors if already exists)
+    const dirUrl=`${base}/${dir}/${dateFolder}/`;
+    const authHeader=cfg.davUser?'Basic '+btoa(unescape(encodeURIComponent(cfg.davUser+':'+cfg.davPass))):'';
+    const baseHeaders={'Content-Type':'text/plain; charset=utf-8'};
+    if(authHeader) baseHeaders['Authorization']=authHeader;
+    try{
+      await fetch(`${base}/${dir}/`,{method:'MKCOL',headers:authHeader?{'Authorization':authHeader}:{}});
+      await fetch(dirUrl,{method:'MKCOL',headers:authHeader?{'Authorization':authHeader}:{}});
+    }catch{}
+    const fileUrl=`${dirUrl}${filename}`;
+    const res=await fetch(fileUrl,{method:'PUT',headers:baseHeaders,body:content});
+    if([200,201,204].includes(res.status)) return{ok:true};
+    return{ok:false,msg:`HTTP ${res.status}`};
   }catch(e){return{ok:false,msg:e.message};}
 }
 
-async function testGitHub(){
-  const owner=document.getElementById('ghOwner').value.trim();
-  const repo=document.getElementById('ghRepo').value.trim();
-  const token=document.getElementById('ghToken').value.trim();
-  const branch=document.getElementById('ghBranch').value.trim()||'main';
-  const dir=document.getElementById('ghDir').value.trim()||'backups';
-  const saved={...cfg};
-  cfg.ghOwner=owner;cfg.ghRepo=repo;cfg.ghToken=token;cfg.ghBranch=branch;cfg.ghDir=dir;
-  const el=document.getElementById('githubStatus');
-  el.style.display='inline-block';el.className='gh-status testing';el.textContent=t('ghTesting');
-  const res=await uploadGitHub('connection_test_'+Date.now(),`_test_${Date.now()}.txt`);
+async function testWebDAV(){
+  const url=document.getElementById('davUrl').value.trim();
+  const user=document.getElementById('davUser').value.trim();
+  const pass=document.getElementById('davPass').value;
+  const dir=document.getElementById('davDir').value.trim()||'backups';
+  const saved={davUrl:cfg.davUrl,davUser:cfg.davUser,davPass:cfg.davPass,davDir:cfg.davDir};
+  cfg.davUrl=url;cfg.davUser=user;cfg.davPass=pass;cfg.davDir=dir;
+  const el=document.getElementById('webdavStatus');
+  el.style.display='inline-block';el.className='dav-status testing';el.textContent=t('ghTesting');
+  const res=await uploadWebDAV('connection_test_'+Date.now(),'_test_pda.txt');
   Object.assign(cfg,saved);
-  if(res.ok){el.className='gh-status ok';el.textContent=t('ghOk');toast('success','✅',t('toastGhOk'));}
-  else{el.className='gh-status fail';el.textContent=t('ghFail')+res.msg;toast('error','❌',t('toastGhFail')+res.msg);}
+  if(res.ok){el.className='dav-status ok';el.textContent=t('ghOk');toast('success','✅',t('toastGhOk'));}
+  else{el.className='dav-status fail';el.textContent=t('ghFail')+res.msg;toast('error','❌',t('toastGhFail')+res.msg);}
 }
 
 // ── BATCH MANAGEMENT ──────────────────────────────────────────────────────────
@@ -831,10 +830,10 @@ async function executeEndBatch(){
   document.getElementById('progBar').style.width='30%';
   document.getElementById('modalBtns').innerHTML='';
 
-  if(cfg.ghToken&&isOnline){
+  if(cfg.davUrl&&isOnline){
     document.getElementById('progBar').style.width='60%';
-    document.getElementById('progText').textContent='GitHub...';
-    const res=await uploadGitHub(content,fn);
+    document.getElementById('progText').textContent='WebDAV...';
+    const res=await uploadWebDAV(content,fn);
     document.getElementById('progBar').style.width='90%';
     if(!res.ok){
       document.getElementById('progWrap').style.display='none';
@@ -929,13 +928,13 @@ function buildBatchContent(batchNum, recs){
 
 async function exportCurrentBatch(){
   if(!records.length){toast('warn','⚠️',t('toastNoData'));return;}
-  if(!cfg.ghToken){toast('warn','⚠️',uiLang==='es'?'GitHub no configurado':uiLang==='en'?'GitHub not configured':'GitHub 未配置');return;}
+  if(!cfg.davUrl){toast('warn','⚠️',uiLang==='es'?'WebDAV no configurado':uiLang==='en'?'WebDAV not configured':'WebDAV 未配置');return;}
   if(!isOnline){toast('warn','⚠️',t('offline'));return;}
   const ts=new Date();
   const tsS=`${ts.getFullYear()}${p(ts.getMonth()+1)}${p(ts.getDate())}_${p(ts.getHours())}${p(ts.getMinutes())}`;
   const fn=buildBatchFilename(currentBatchNum,records.length,tsS);
-  toast('info','☁',uiLang==='es'?'Subiendo a GitHub...':uiLang==='en'?'Uploading to GitHub...':'上传到 GitHub...');
-  const res=await uploadGitHub(buildBatchContent(currentBatchNum,records),fn);
+  toast('info','☁',uiLang==='es'?'Subiendo a WebDAV...':uiLang==='en'?'Uploading to WebDAV...':'上传到 WebDAV...');
+  const res=await uploadWebDAV(buildBatchContent(currentBatchNum,records),fn);
   if(res.ok) toast('success','✅',t('backupOk').replace('%f',fn));
   else toast('error','❌',t('toastGhFail')+res.msg);
 }
@@ -945,7 +944,7 @@ async function exportCurrentBatch(){
 async function exportAllBatches(){
   const allRecs=[...batches.map(b=>b.records).flat(),...records];
   if(!allRecs.length){toast('warn','⚠️',t('toastNoBatches'));return;}
-  if(!cfg.ghToken){toast('warn','⚠️',uiLang==='es'?'GitHub no configurado':uiLang==='en'?'GitHub not configured':'GitHub 未配置');return;}
+  if(!cfg.davUrl){toast('warn','⚠️',uiLang==='es'?'WebDAV no configurado':uiLang==='en'?'WebDAV not configured':'WebDAV 未配置');return;}
   if(!isOnline){toast('warn','⚠️',t('offline'));return;}
   const ts=new Date();
   const tsS=`${ts.getFullYear()}${p(ts.getMonth()+1)}${p(ts.getDate())}_${p(ts.getHours())}${p(ts.getMinutes())}`;
@@ -960,8 +959,8 @@ async function exportAllBatches(){
     fileContent+=`# Lote ${currentBatchNum} (en curso) | ${records.length} items\n`;
     fileContent+=records.map(r=>`${r.id}\t${r.time}\t${r.barcode}`).join('\n')+'\n';
   }
-  toast('info','☁',uiLang==='es'?'Subiendo resumen a GitHub...':uiLang==='en'?'Uploading summary to GitHub...':'上传汇总到 GitHub...');
-  const res=await uploadGitHub(fileContent,fn);
+  toast('info','☁',uiLang==='es'?'Subiendo resumen a WebDAV...':uiLang==='en'?'Uploading summary to WebDAV...':'上传汇总到 WebDAV...');
+  const res=await uploadWebDAV(fileContent,fn);
   if(res.ok) toast('success','✅',t('backupOk').replace('%f',fn));
   else toast('error','❌',t('toastGhFail')+res.msg);
 }
@@ -1026,11 +1025,10 @@ function applyCfgToUI(){
   document.getElementById('presetSelect').value=cfg.presetKey||'';
   document.getElementById('minLen').value=cfg.minLen;
   document.getElementById('maxLen').value=cfg.maxLen;
-  document.getElementById('ghOwner').value=cfg.ghOwner||'';
-  document.getElementById('ghRepo').value=cfg.ghRepo||'';
-  document.getElementById('ghToken').value=cfg.ghToken||'';
-  document.getElementById('ghBranch').value=cfg.ghBranch||'main';
-  document.getElementById('ghDir').value=cfg.ghDir||'backups';
+  document.getElementById('davUrl').value=cfg.davUrl||'https://hakata.infini-cloud.net/dav/';
+  document.getElementById('davUser').value=cfg.davUser||'';
+  document.getElementById('davPass').value=cfg.davPass||'';
+  document.getElementById('davDir').value=cfg.davDir||'backups';
   document.getElementById('continuousToggle').className='toggle-wrap'+(cfg.continuous?' on':'');
   document.getElementById('voiceToggle').className='toggle-wrap'+(cfg.voiceEnabled?' on':'');
   document.getElementById(cfg.voiceLang==='zh'?'langZh':'langEs').checked=true;
@@ -1061,11 +1059,10 @@ function updatePrefixDisplay(){document.getElementById('prefixDisplay').value=cf
 function saveSettings(){
   cfg.minLen=parseInt(document.getElementById('minLen').value)||1;
   cfg.maxLen=parseInt(document.getElementById('maxLen').value)||100;
-  cfg.ghOwner=document.getElementById('ghOwner').value.trim();
-  cfg.ghRepo=document.getElementById('ghRepo').value.trim();
-  cfg.ghToken=document.getElementById('ghToken').value.trim();
-  cfg.ghBranch=document.getElementById('ghBranch').value.trim()||'main';
-  cfg.ghDir=document.getElementById('ghDir').value.trim()||'backups';
+  cfg.davUrl=document.getElementById('davUrl').value.trim()||'https://hakata.infini-cloud.net/dav/';
+  cfg.davUser=document.getElementById('davUser').value.trim();
+  cfg.davPass=document.getElementById('davPass').value;
+  cfg.davDir=document.getElementById('davDir').value.trim()||'backups';
   cfg.voiceLang=document.querySelector('input[name="lang"]:checked')?.value||'es';
   if(cfg.presetKey==='custom') cfg.prefixes=document.getElementById('customPrefixInput').value.split(',').map(s=>s.trim()).filter(Boolean);
   saveCfg(); updatePrefixDisplay(); updateChipBar(); updateExportPreview();
@@ -1133,6 +1130,41 @@ function addMBtn(label,cls,fn,container){
   const b=document.createElement('button'); b.className='mbtn '+cls; b.textContent=label; b.onclick=fn; c.appendChild(b);
 }
 function closeModal(){document.getElementById('overlay').classList.remove('show');}
+
+
+// ── SERVICE WORKER (offline support) ─────────────────────────────────────────
+(function registerSW(){
+  if(!('serviceWorker' in navigator)) return;
+  const swCode = "\nconst CACHE_NAME = 'pda-scanner-v4';\nconst ASSETS = ['/'];  // cache the page itself\n\n// Install: cache the page\nself.addEventListener('install', e => {\n  e.waitUntil(\n    caches.open(CACHE_NAME).then(cache => {\n      return cache.addAll(ASSETS).catch(() => {});\n    })\n  );\n  self.skipWaiting();\n});\n\n// Activate: clean old caches\nself.addEventListener('activate', e => {\n  e.waitUntil(\n    caches.keys().then(keys =>\n      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))\n    )\n  );\n  self.clients.claim();\n});\n\n// Fetch: network first, fall back to cache\nself.addEventListener('fetch', e => {\n  // Only handle GET requests for same-origin or cached resources\n  if (e.request.method !== 'GET') return;\n  // For WebDAV/external requests, let them pass through normally\n  const url = new URL(e.request.url);\n  if (url.origin !== self.location.origin && !e.request.url.includes('fonts.googleapis')) {\n    return;\n  }\n  e.respondWith(\n    fetch(e.request)\n      .then(response => {\n        // Cache successful responses for the app page\n        if (response.ok) {\n          const clone = response.clone();\n          caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));\n        }\n        return response;\n      })\n      .catch(() => caches.match(e.request).then(r => r || new Response('Offline', {status: 503})))\n  );\n});\n";
+  const blob = new Blob([swCode], {type: 'application/javascript'});
+  const swUrl = URL.createObjectURL(blob);
+  navigator.serviceWorker.register(swUrl, {scope: '/'})
+    .then(reg => {
+      reg.addEventListener('updatefound', () => {
+        const nw = reg.installing;
+        nw && nw.addEventListener('statechange', () => {
+          if(nw.state === 'installed' && navigator.serviceWorker.controller){
+            console.log('[SW] Update ready');
+          }
+        });
+      });
+      // Show offline indicator
+      navigator.serviceWorker.addEventListener('message', e => {
+        if(e.data && e.data.type === 'OFFLINE') updateNetUI();
+      });
+    })
+    .catch(err => console.warn('[SW] Registration failed:', err));
+})();
+
+
+// Cache current page HTML for offline use
+(function cachePageNow(){
+  if(!('caches' in window)) return;
+  caches.open('pda-scanner-v4').then(cache => {
+    cache.put(location.href, new Response(document.documentElement.outerHTML,
+      {headers: {'Content-Type': 'text/html; charset=utf-8'}}));
+  }).catch(()=>{});
+})();
 
 init();
 </script>
