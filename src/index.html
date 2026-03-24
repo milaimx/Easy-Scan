@@ -351,7 +351,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
         Los archivos se organizan por carpeta de fecha: /backups/<strong>20260304</strong>/archivo.txt
       </div>
     </div>
-    <div class="setting-row col"><div class="setting-label" id="lblDavUrl">URL del Servidor WebDAV</div><input class="s-input full" id="davUrl" placeholder="https://dav.example.com/remote.php/dav/files/user/" value="https://hakata.infini-cloud.net/dav/" type="url"></div>
+    <div class="setting-row col"><div class="setting-label" id="lblDavUrl">URL del Servidor WebDAV</div><input class="s-input full" id="davUrl" placeholder="https://dav.example.com/remote.php/dav/files/user/" value="https://icy-snowflake-3fb1.milai-mexico.workers.dev/dav/" type="url"></div>
     <div class="setting-row col"><div class="setting-label" id="lblDavUser">Usuario</div><input class="s-input full" id="davUser" placeholder="username"></div>
     <div class="setting-row col"><div class="setting-label" id="lblDavPass">Contraseña</div><input class="s-input full" id="davPass" type="password" placeholder="••••••"></div>
     <div class="setting-row col"><div class="setting-label" id="lblDavDir">Directorio Raíz (subcarpeta de fecha automática)</div><input class="s-input full" id="davDir" placeholder="backups" value="backups"></div>
@@ -574,7 +574,7 @@ let scanActive=false, toastTimerId=null, uiLang='es', currentBatchNum=1;
 let cfg={
   presetKey:'ML', prefixes:['46'], minLen:10, maxLen:13,
   continuous:false, voiceEnabled:true, voiceLang:'es',
-  davUrl:'https://hakata.infini-cloud.net/dav/', davUser:'', davPass:'', davDir:'backups'
+  davUrl:'https://icy-snowflake-3fb1.milai-mexico.workers.dev/dav/', davUser:'', davPass:'', davDir:'backups'
 };
 
 // ── LANGUAGE ──────────────────────────────────────────────────────────────────
@@ -773,23 +773,36 @@ function testVoice(){
 async function uploadWebDAV(content, filename){
   if(!cfg.davUrl) return{ok:false,msg:'WebDAV URL not configured'};
   try{
+    // cfg.davUrl is the full base, e.g. https://worker.../dav/
     const base=cfg.davUrl.replace(/\/$/,'');
     const dir=(cfg.davDir||'backups').replace(/^\//,'').replace(/\/$/,'');
     const now=new Date();
     const dateFolder=`${now.getFullYear()}${p(now.getMonth()+1)}${p(now.getDate())}`;
-    // Ensure directory exists (MKCOL, ignore errors if already exists)
-    const dirUrl=`${base}/${dir}/${dateFolder}/`;
-    const authHeader=cfg.davUser?'Basic '+btoa(unescape(encodeURIComponent(cfg.davUser+':'+cfg.davPass))):'';
-    const baseHeaders={'Content-Type':'text/plain; charset=utf-8'};
-    if(authHeader) baseHeaders['Authorization']=authHeader;
-    try{
-      await fetch(`${base}/${dir}/`,{method:'MKCOL',headers:authHeader?{'Authorization':authHeader}:{}});
-      await fetch(dirUrl,{method:'MKCOL',headers:authHeader?{'Authorization':authHeader}:{}});
-    }catch{}
-    const fileUrl=`${dirUrl}${filename}`;
-    const res=await fetch(fileUrl,{method:'PUT',headers:baseHeaders,body:content});
+    // Build auth header using TextEncoder for reliable encoding of any characters
+    let authHeader='';
+    if(cfg.davUser){
+      const creds=cfg.davUser+':'+cfg.davPass;
+      // Use Uint8Array for safe btoa encoding (handles non-latin chars)
+      const bytes=new TextEncoder().encode(creds);
+      let binary='';
+      bytes.forEach(b=>binary+=String.fromCharCode(b));
+      authHeader='Basic '+btoa(binary);
+    }
+    const mkcolHeaders={'Content-Type':'text/plain'};
+    if(authHeader) mkcolHeaders['Authorization']=authHeader;
+    // Create subdirectories (ignore failures - they may already exist)
+    try{ await fetch(`${base}/${dir}/`,{method:'MKCOL',headers:mkcolHeaders}); }catch{}
+    try{ await fetch(`${base}/${dir}/${dateFolder}/`,{method:'MKCOL',headers:mkcolHeaders}); }catch{}
+    // Upload the file
+    const fileUrl=`${base}/${dir}/${dateFolder}/${filename}`;
+    const putHeaders={'Content-Type':'text/plain; charset=utf-8'};
+    if(authHeader) putHeaders['Authorization']=authHeader;
+    const res=await fetch(fileUrl,{method:'PUT',headers:putHeaders,body:content});
     if([200,201,204].includes(res.status)) return{ok:true};
-    return{ok:false,msg:`HTTP ${res.status}`};
+    // Return detailed error message for debugging
+    let errDetail=`HTTP ${res.status}`;
+    try{const txt=await res.text();if(txt&&txt.length<200)errDetail+=': '+txt.trim();}catch{}
+    return{ok:false,msg:errDetail};
   }catch(e){return{ok:false,msg:e.message};}
 }
 
@@ -1025,7 +1038,7 @@ function applyCfgToUI(){
   document.getElementById('presetSelect').value=cfg.presetKey||'';
   document.getElementById('minLen').value=cfg.minLen;
   document.getElementById('maxLen').value=cfg.maxLen;
-  document.getElementById('davUrl').value=cfg.davUrl||'https://hakata.infini-cloud.net/dav/';
+  document.getElementById('davUrl').value=cfg.davUrl||'https://icy-snowflake-3fb1.milai-mexico.workers.dev/dav/';
   document.getElementById('davUser').value=cfg.davUser||'';
   document.getElementById('davPass').value=cfg.davPass||'';
   document.getElementById('davDir').value=cfg.davDir||'backups';
