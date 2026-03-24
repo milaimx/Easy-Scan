@@ -284,7 +284,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
       <div class="history-summary-text" id="lblHistorySummary">Lotes archivados</div>
       <div class="history-summary-num"><span id="historyBatchCount">0</span> <span id="lblLotes" style="font-size:14px;font-weight:400">lotes</span> · <span id="historyTotalCount">0</span> <span id="lblItems" style="font-size:14px;font-weight:400">items</span></div>
     </div>
-    <button class="export-all-btn" id="btnExportAll" onclick="exportAllBatches()">⬇ Exportar Todo</button>
+
   </div>
   <div id="batchHistoryList"></div>
 </div>
@@ -600,7 +600,7 @@ function applyI18N(){
     'shGithub','lblGhOwner','lblGhRepo','lblGhToken','lblGhBranch','lblGhDir','lblGhTest',
     'shExport','lblFileTpl','lblFileTplSub',
     'menuEndBatch','menuClose',
-    'btnVoiceTest','btnGhTest','btnSave','btnExportAll','shResetAll','lblResetAll','lblResetAllSub','btnResetAll'];
+    'btnVoiceTest','btnGhTest','btnSave','shResetAll','lblResetAll','lblResetAllSub','btnResetAll'];
   ids.forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=t(id);});
   document.getElementById('thBarcode').textContent=t('thBarcode');
   document.getElementById('githubWarning').textContent=t('githubWarning');
@@ -841,7 +841,7 @@ async function executeEndBatch(){
       document.getElementById('progText').textContent='';
       document.getElementById('modalBody').innerHTML=`<span style="color:var(--orange)">${t('backupFail').replace('%e',res.msg)}</span><br><br>${t('backupFailQ')}`;
       addMBtn(t('cancelBtn'),'flat',closeModal);
-      addMBtn(t('forceClearBtn'),'raised-o',()=>doArchiveBatch(batchNum,ts));
+      addMBtn(t('forceClearBtn'),'raised-o',()=>doArchiveBatch(batchNum,ts,false));
       return;
     }
   }else{
@@ -849,24 +849,25 @@ async function executeEndBatch(){
     document.getElementById('modalBody').innerHTML=`<span style="color:var(--orange)">${t('offlineMsg')}</span>`;
     document.getElementById('progWrap').style.display='none';
     addMBtn(t('cancelBtn'),'flat',closeModal);
-    addMBtn(t('localSaveBtn'),'raised-o',()=>doArchiveBatch(batchNum,ts));
+    addMBtn(t('localSaveBtn'),'raised-o',()=>doArchiveBatch(batchNum,ts,false));
     return;
   }
   document.getElementById('progBar').style.width='100%';
   setTimeout(()=>{
-    doArchiveBatch(batchNum,ts);
+    doArchiveBatch(batchNum,ts,true);
     toast('info','📦',t('backupOk').replace('%f',fn));
   },400);
 }
 
-function doArchiveBatch(batchNum, ts){
+function doArchiveBatch(batchNum, ts, ghSuccess=false){
   // Archive current records into batches array
   const prefixName = cfg.presetKey&&PRESETS[cfg.presetKey]?PRESETS[cfg.presetKey].name:'Custom';
   batches.push({
     num: batchNum,
     time: fmtTime(ts),
     prefix: prefixName,
-    records: [...records]
+    records: [...records],
+    ghOk: ghSuccess
   });
   saveBatches();
   // Reset current scan
@@ -926,46 +927,43 @@ function buildBatchContent(batchNum, recs){
   return header+'\n'+rows;
 }
 
-function exportCurrentBatch(){
+async function exportCurrentBatch(){
   if(!records.length){toast('warn','⚠️',t('toastNoData'));return;}
+  if(!cfg.ghToken){toast('warn','⚠️',uiLang==='es'?'GitHub no configurado':uiLang==='en'?'GitHub not configured':'GitHub 未配置');return;}
+  if(!isOnline){toast('warn','⚠️',t('offline'));return;}
   const ts=new Date();
   const tsS=`${ts.getFullYear()}${p(ts.getMonth()+1)}${p(ts.getDate())}_${p(ts.getHours())}${p(ts.getMinutes())}`;
   const fn=buildBatchFilename(currentBatchNum,records.length,tsS);
-  downloadFile(buildBatchContent(currentBatchNum,records),fn);
-  toast('success','✅',t('toastExported').replace('%n',records.length).replace('%f',fn));
+  toast('info','☁',uiLang==='es'?'Subiendo a GitHub...':uiLang==='en'?'Uploading to GitHub...':'上传到 GitHub...');
+  const res=await uploadGitHub(buildBatchContent(currentBatchNum,records),fn);
+  if(res.ok) toast('success','✅',t('backupOk').replace('%f',fn));
+  else toast('error','❌',t('toastGhFail')+res.msg);
 }
 
-function exportSingleBatch(batchIdx){
-  const batch=batches[batchIdx];
-  if(!batch)return;
-  const ts=new Date(batch.time);
-  const tsS=`${ts.getFullYear()}${p(ts.getMonth()+1)}${p(ts.getDate())}_${p(ts.getHours())}${p(ts.getMinutes())}`;
-  const prefixPart=batch.prefix.replace(/[^a-zA-Z0-9]/g,'')||'All';
-  const fn=`scan_export_${prefixPart}_L${batch.num}_${batch.records.length}_${tsS}.txt`;
-  const header=`# Lote ${batch.num} | Regla: ${batch.prefix} | Total: ${batch.records.length}\n`;
-  const rows=batch.records.map(r=>`${r.id}\t${r.time}\t${r.barcode}`).join('\n');
-  downloadFile(header+rows,fn);
-  toast('success','✅',t('toastExported').replace('%n',batch.records.length).replace('%f',fn));
-}
 
-function exportAllBatches(){
+
+async function exportAllBatches(){
   const allRecs=[...batches.map(b=>b.records).flat(),...records];
   if(!allRecs.length){toast('warn','⚠️',t('toastNoBatches'));return;}
+  if(!cfg.ghToken){toast('warn','⚠️',uiLang==='es'?'GitHub no configurado':uiLang==='en'?'GitHub not configured':'GitHub 未配置');return;}
+  if(!isOnline){toast('warn','⚠️',t('offline'));return;}
   const ts=new Date();
   const tsS=`${ts.getFullYear()}${p(ts.getMonth()+1)}${p(ts.getDate())}_${p(ts.getHours())}${p(ts.getMinutes())}`;
   const prefixPart=cfg.presetKey&&PRESETS[cfg.presetKey]?PRESETS[cfg.presetKey].name.replace(/[^a-zA-Z0-9]/g,''):'All';
   const fn=`scan_export_${prefixPart}_ALL_${allRecs.length}_${tsS}.txt`;
-  let content='';
+  let fileContent='';
   batches.forEach(b=>{
-    content+=`# Lote ${b.num} | Regla: ${b.prefix} | ${b.records.length} items | ${b.time}\n`;
-    content+=b.records.map(r=>`${r.id}\t${r.time}\t${r.barcode}`).join('\n')+'\n\n';
+    fileContent+=`# Lote ${b.num} | Regla: ${b.prefix} | ${b.records.length} items | ${b.time}\n`;
+    fileContent+=b.records.map(r=>`${r.id}\t${r.time}\t${r.barcode}`).join('\n')+'\n\n';
   });
   if(records.length){
-    content+=`# Lote ${currentBatchNum} (en curso) | ${records.length} items\n`;
-    content+=records.map(r=>`${r.id}\t${r.time}\t${r.barcode}`).join('\n')+'\n';
+    fileContent+=`# Lote ${currentBatchNum} (en curso) | ${records.length} items\n`;
+    fileContent+=records.map(r=>`${r.id}\t${r.time}\t${r.barcode}`).join('\n')+'\n';
   }
-  downloadFile(content,fn);
-  toast('success','✅',t('toastExported').replace('%n',allRecs.length).replace('%f',fn));
+  toast('info','☁',uiLang==='es'?'Subiendo resumen a GitHub...':uiLang==='en'?'Uploading summary to GitHub...':'上传汇总到 GitHub...');
+  const res=await uploadGitHub(fileContent,fn);
+  if(res.ok) toast('success','✅',t('backupOk').replace('%f',fn));
+  else toast('error','❌',t('toastGhFail')+res.msg);
 }
 
 function downloadFile(content,name){
@@ -1010,7 +1008,7 @@ function renderBatchHistory(){
         </div>
         <div class="batch-card-right">
           <span class="batch-count-pill">${b.records.length}</span>
-          <button class="batch-export-btn" onclick="event.stopPropagation();exportSingleBatch(${idx})">${t('batchExportBtn')}</button>
+          <span style="font-size:11px;font-family:var(--mono);color:${b.ghOk?'var(--green)':'var(--text3)'}">${b.ghOk?'☁ OK':'☁ —'}</span>
         </div>
       </div>
       <div class="batch-card-body" id="batchBody-${idx}">${miniRows}${more}</div>
