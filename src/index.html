@@ -791,17 +791,27 @@ async function uploadWebDAV(content, filename){
     const mkcolHeaders={'Content-Type':'text/plain'};
     if(authHeader) mkcolHeaders['Authorization']=authHeader;
     // Create subdirectories (ignore failures - they may already exist)
-    try{ await fetch(`${base}/${dir}/`,{method:'MKCOL',headers:mkcolHeaders}); }catch{}
-    try{ await fetch(`${base}/${dir}/${dateFolder}/`,{method:'MKCOL',headers:mkcolHeaders}); }catch{}
+    const dir1Url=`${base}/${dir}/`;
+    const dir2Url=`${base}/${dir}/${dateFolder}/`;
+    try{
+      const r1=await fetch(dir1Url,{method:'MKCOL',headers:mkcolHeaders});
+      console.log('[WebDAV] MKCOL',dir1Url,'→',r1.status);
+    }catch(e){console.log('[WebDAV] MKCOL dir1 error:',e.message);}
+    try{
+      const r2=await fetch(dir2Url,{method:'MKCOL',headers:mkcolHeaders});
+      console.log('[WebDAV] MKCOL',dir2Url,'→',r2.status);
+    }catch(e){console.log('[WebDAV] MKCOL dir2 error:',e.message);}
     // Upload the file
     const fileUrl=`${base}/${dir}/${dateFolder}/${filename}`;
+    console.log('[WebDAV] PUT',fileUrl);
     const putHeaders={'Content-Type':'text/plain; charset=utf-8'};
     if(authHeader) putHeaders['Authorization']=authHeader;
     const res=await fetch(fileUrl,{method:'PUT',headers:putHeaders,body:content});
+    console.log('[WebDAV] PUT result:',res.status);
     if([200,201,204].includes(res.status)) return{ok:true};
-    // Return detailed error message for debugging
+    // Return detailed error message
     let errDetail=`HTTP ${res.status}`;
-    try{const txt=await res.text();if(txt&&txt.length<200)errDetail+=': '+txt.trim();}catch{}
+    try{const txt=await res.text();if(txt&&txt.length<300)errDetail+=' | '+txt.replace(/<[^>]+>/g,'').trim().substring(0,150);}catch{}
     return{ok:false,msg:errDetail};
   }catch(e){return{ok:false,msg:e.message};}
 }
@@ -815,10 +825,21 @@ async function testWebDAV(){
   cfg.davUrl=url;cfg.davUser=user;cfg.davPass=pass;cfg.davDir=dir;
   const el=document.getElementById('webdavStatus');
   el.style.display='inline-block';el.className='dav-status testing';el.textContent=t('ghTesting');
+  // Show exact URL being tested
+  const base=url.replace(/\/$/,'');
+  const now=new Date();
+  const df=`${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+  const testUrl=`${base}/${dir}/${df}/_test_pda.txt`;
+  console.log('[WebDAV Test] PUT →', testUrl);
+  toast('warn','🔍','Testing: '+testUrl);
   const res=await uploadWebDAV('connection_test_'+Date.now(),'_test_pda.txt');
   Object.assign(cfg,saved);
   if(res.ok){el.className='dav-status ok';el.textContent=t('ghOk');toast('success','✅',t('toastGhOk'));}
-  else{el.className='dav-status fail';el.textContent=t('ghFail')+res.msg;toast('error','❌',t('toastGhFail')+res.msg);}
+  else{
+    el.className='dav-status fail';el.textContent=t('ghFail')+res.msg;
+    // Show the exact URL that failed
+    toast('error','❌',res.msg+' | URL: '+testUrl);
+  }
 }
 
 // ── BATCH MANAGEMENT ──────────────────────────────────────────────────────────
