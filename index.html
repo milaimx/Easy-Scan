@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>防重复扫描</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;700&display=swap');
+:root{
+  --primary:#1565C0;--primary-dark:#0D47A1;--accent:#E53935;
+  --bg:#FFFFFF;--surface:#F5F5F5;--surface2:#EEEEEE;--border:#E0E0E0;
+  --text:#212121;--text2:#757575;--text3:#9E9E9E;
+  --green:#2E7D32;--green-bg:#E8F5E9;--red:#C62828;--red-bg:#FFEBEE;
+  --orange:#E65100;--orange-bg:#FFF3E0;--purple:#6A1B9A;--purple-bg:#F3E5F5;
+  --mono:'Roboto Mono',monospace;--sans:'Roboto',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;display:flex;flex-direction:column;max-width:480px;margin:0 auto;overflow-x:hidden}
+
+/* APPBAR */
+.appbar{background:var(--primary);color:white;display:flex;align-items:center;justify-content:space-between;padding:0 8px 0 16px;height:56px;position:sticky;top:0;z-index:100;box-shadow:0 2px 4px rgba(0,0,0,.3);flex-shrink:0}
+.appbar-title{font-size:20px;font-weight:500}
+.appbar-actions{display:flex;gap:4px;align-items:center}
+.icon-btn{width:48px;height:48px;display:flex;align-items:center;justify-content:center;border:none;background:none;color:white;cursor:pointer;border-radius:50%;font-size:20px;transition:background .15s}
+.icon-btn:active{background:rgba(255,255,255,.2)}
+.lang-switcher{display:flex;gap:2px;align-items:center}
+.lang-pill{padding:4px 8px;border-radius:12px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,.5);background:none;color:rgba(255,255,255,.7);transition:all .15s;font-family:var(--sans)}
+.lang-pill.active{background:white;color:var(--primary);border-color:white}
+
+/* NET STRIP */
+.net-strip{display:flex;align-items:center;justify-content:space-between;padding:4px 16px;font-size:12px;font-family:var(--mono);border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.net-pill{display:flex;align-items:center;gap:5px}
+.net-dot{width:8px;height:8px;border-radius:50%}
+.online .net-dot{background:#43A047;animation:pulse 2s infinite}
+.offline .net-dot{background:var(--accent)}
+.online{color:#2E7D32}.offline{color:var(--accent)}
+.sync-text{color:var(--orange);font-size:11px}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* DUAL COUNTER BANNER */
+.count-banner{background:#BBDEFB;display:flex;align-items:stretch;flex-shrink:0}
+.count-block{flex:1;text-align:center;padding:10px 8px 12px;position:relative}
+.count-block.batch{background:#BBDEFB;border-right:2px solid white}
+.count-block.total{background:#E3F2FD}
+.count-number{font-family:var(--mono);font-size:64px;font-weight:700;line-height:1;letter-spacing:-2px}
+.count-block.batch .count-number{color:var(--accent)}
+.count-block.total .count-number{color:var(--purple)}
+.count-label{font-size:11px;font-weight:500;margin-top:2px}
+.count-block.batch .count-label{color:var(--primary)}
+.count-block.total .count-label{color:var(--purple)}
+.batch-badge{position:absolute;top:8px;right:10px;background:var(--primary);color:white;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;font-family:var(--mono)}
+
+/* PANELS */
+.panel{display:none;flex-direction:column;flex:1;overflow:hidden}
+.panel.active{display:flex}
+#panelScan{overflow:hidden}
+
+/* PREFIX BAR */
+.prefix-bar{display:flex;align-items:center;gap:6px;padding:8px 10px;background:#E3F2FD;border-bottom:1px solid #BBDEFB;flex-shrink:0;flex-wrap:wrap}
+.prefix-bar-label{font-size:12px;color:var(--primary);font-weight:600;white-space:nowrap}
+.prefix-chip{padding:5px 12px;border-radius:16px;border:1px solid var(--primary);background:white;color:var(--primary);font-size:13px;cursor:pointer;font-family:var(--sans);transition:all .15s;white-space:nowrap}
+.prefix-chip.active{background:var(--primary);color:white}
+.prefix-chip.all{border-color:var(--text3);color:var(--text3)}
+.prefix-chip.all.active{background:var(--text3);color:white}
+
+/* INPUT ROW */
+.input-row{display:flex;align-items:center;padding:6px 8px;border-bottom:2px solid var(--primary);background:white;flex-shrink:0}
+.barcode-field{flex:1;border:none;outline:none;font-family:var(--mono);font-size:16px;padding:4px 8px;color:var(--text);background:transparent}
+.ok-btn{border:none;background:none;color:var(--primary);font-size:16px;font-weight:700;padding:8px 12px;cursor:pointer;font-family:var(--sans)}
+
+/* TABLE */
+.table-header{display:grid;grid-template-columns:70px 1fr 100px;padding:8px 0;border-bottom:2px solid var(--border);background:var(--surface);flex-shrink:0}
+.th{text-align:center;font-size:15px;font-weight:700;color:var(--text);padding:4px 8px}
+.record-list{flex:1;overflow-y:auto;background:white}
+.record-row{display:grid;grid-template-columns:70px 1fr 100px;border-bottom:1px solid var(--border);min-height:52px;align-items:center}
+.record-row.new{animation:rowIn .25s ease}
+.record-row.dup{background:var(--red-bg);animation:flash .4s ease 2}
+@keyframes rowIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+@keyframes flash{0%,100%{background:var(--red-bg)}50%{background:#FFCDD2}}
+.td{text-align:center;font-size:15px;color:var(--text);padding:8px;word-break:break-all;line-height:1.3}
+.td.num{color:var(--text2);font-family:var(--mono);font-size:13px}
+.td.barcode{text-align:left;font-family:var(--mono);font-size:14px;padding:8px 4px}
+.td.date{font-family:var(--mono);font-size:11px;color:var(--text2);white-space:pre;line-height:1.5}
+.barcode-tail{font-size:16.5px;font-weight:700;color:var(--accent)}
+.sync-dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:3px;vertical-align:middle}
+.sync-dot.ok{background:#43A047}.sync-dot.pend{background:#FF9800}
+
+/* EMPTY / FAB */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 24px;gap:12px;color:var(--text3)}
+.empty-icon{font-size:56px;opacity:.4}
+.empty-text{font-size:14px;text-align:center}
+.scan-fab{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:16px;background:var(--surface2);border:none;border-top:1px solid var(--border);cursor:pointer;font-size:18px;font-family:var(--sans);color:var(--text2);font-weight:500;transition:background .15s;flex-shrink:0}
+.scan-fab:active{background:#BDBDBD}
+.scan-fab .scan-icon{font-size:28px}
+.scan-fab.active{background:var(--primary);color:white}
+
+/* BATCH END BUTTON */
+.batch-end-bar{display:flex;gap:0;flex-shrink:0;border-top:2px solid var(--border)}
+.batch-end-btn{flex:1;padding:14px 8px;border:none;cursor:pointer;font-size:15px;font-weight:700;font-family:var(--sans);transition:background .15s;display:flex;align-items:center;justify-content:center;gap:6px}
+.batch-end-btn.archive{background:#7B1FA2;color:white}
+.batch-end-btn.archive:active{background:#6A1B9A}
+.batch-end-btn.export-cur{background:var(--green-bg);color:var(--green);border-right:1px solid var(--border)}
+.batch-end-btn.export-cur:active{background:#C8E6C9}
+
+/* SETTINGS */
+#panelSettings{overflow-y:auto;background:var(--surface)}
+.section{background:white;margin-bottom:8px}
+.section-header{padding:10px 16px 6px;font-size:12px;color:var(--primary);font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:var(--surface);border-bottom:1px solid var(--border)}
+.setting-row{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border);gap:12px}
+.setting-row:last-child{border-bottom:none}
+.setting-row.col{flex-direction:column;align-items:flex-start;gap:8px}
+.setting-label{font-size:15px;color:var(--text);flex:1}
+.setting-sub{font-size:12px;color:var(--text2);margin-top:1px}
+.s-input{border:1px solid var(--border);border-radius:4px;padding:8px 10px;font-size:14px;font-family:var(--mono);color:var(--text);background:var(--surface);outline:none;transition:border .15s;width:130px}
+.s-input:focus{border-color:var(--primary);background:white}
+.s-input.full{width:100%;box-sizing:border-box}
+.s-select{border:1px solid var(--border);border-radius:4px;padding:8px 30px 8px 10px;font-size:14px;font-family:var(--sans);color:var(--text);background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23757575' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E") no-repeat calc(100% - 10px) center;outline:none;width:100%;appearance:none}
+.toggle-wrap{width:50px;height:28px;border-radius:14px;background:#BDBDBD;position:relative;cursor:pointer;transition:background .2s;flex-shrink:0;border:none}
+.toggle-wrap::after{content:'';position:absolute;width:22px;height:22px;border-radius:50%;background:white;top:3px;left:3px;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.toggle-wrap.on{background:var(--primary)}
+.toggle-wrap.on::after{transform:translateX(22px)}
+.lang-opts{display:flex;gap:16px;flex-wrap:wrap}
+.lang-opt{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px;color:var(--text)}
+.lang-opt input{accent-color:var(--primary);width:18px;height:18px}
+.save-btn{margin:16px;width:calc(100% - 32px);padding:14px;background:var(--primary);color:white;border:none;border-radius:4px;font-size:16px;font-weight:700;cursor:pointer;font-family:var(--sans);letter-spacing:.05em;box-shadow:0 2px 4px rgba(0,0,0,.3)}
+.save-btn:active{background:var(--primary-dark)}
+.test-btn{padding:8px 16px;border:1px solid var(--primary);background:transparent;color:var(--primary);border-radius:4px;font-size:14px;cursor:pointer;font-family:var(--sans);white-space:nowrap}
+
+/* HISTORY PANEL */
+#panelHistory{overflow-y:auto;background:var(--surface)}
+.history-summary{background:var(--purple-bg);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #CE93D8;flex-shrink:0}
+.history-summary-text{font-size:13px;color:var(--purple);font-weight:500}
+.history-summary-num{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--purple)}
+.export-all-btn{padding:8px 16px;background:var(--purple);color:white;border:none;border-radius:4px;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--sans)}
+.export-all-btn:active{background:#4A148C}
+.batch-card{background:white;margin:8px 12px;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,.1);overflow:hidden}
+.batch-card-header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:white;border-bottom:1px solid var(--border);cursor:pointer}
+.batch-card-left{display:flex;flex-direction:column;gap:3px}
+.batch-card-num{font-size:13px;font-weight:700;color:var(--purple);font-family:var(--mono)}
+.batch-card-meta{font-size:11px;color:var(--text2);font-family:var(--mono)}
+.batch-card-right{display:flex;align-items:center;gap:10px}
+.batch-count-pill{background:var(--purple-bg);color:var(--purple);font-weight:700;font-family:var(--mono);font-size:15px;padding:4px 12px;border-radius:12px}
+.batch-export-btn{padding:6px 12px;border:1px solid var(--primary);background:transparent;color:var(--primary);border-radius:4px;font-size:12px;cursor:pointer;font-family:var(--sans);white-space:nowrap}
+.batch-export-btn:active{background:#E3F2FD}
+.batch-card-body{max-height:0;overflow:hidden;transition:max-height .25s ease}
+.batch-card-body.open{max-height:400px}
+.batch-mini-row{display:grid;grid-template-columns:44px 1fr 88px;border-bottom:1px solid var(--border);padding:6px 10px;align-items:center;font-size:12px}
+.batch-mini-row:last-child{border-bottom:none}
+.bm-num{color:var(--text3);font-family:var(--mono);font-size:11px}
+.bm-bc{font-family:var(--mono);font-size:12px;word-break:break-all}
+.bm-date{font-family:var(--mono);font-size:10px;color:var(--text2);text-align:right;white-space:pre;line-height:1.4}
+.bm-tail{font-weight:700;color:var(--accent)}
+.history-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 24px;gap:12px;color:var(--text3)}
+
+/* NAV */
+.bottom-nav{display:flex;background:white;border-top:1px solid var(--border);position:sticky;bottom:0;z-index:100;flex-shrink:0}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border:none;background:none;cursor:pointer;color:var(--text3);font-size:11px;font-family:var(--sans);transition:color .15s;position:relative}
+.nav-item .nav-icon{font-size:22px}
+.nav-item.active{color:var(--primary)}
+.nav-badge{position:absolute;top:4px;right:calc(50% - 18px);background:var(--purple);color:white;font-size:10px;font-weight:700;padding:1px 5px;border-radius:8px;min-width:16px;text-align:center;font-family:var(--mono)}
+
+/* TOAST */
+.toast{position:fixed;top:64px;left:50%;transform:translateX(-50%) translateY(-16px);z-index:300;min-width:260px;max-width:calc(100vw - 32px);padding:12px 16px;border-radius:4px;font-size:14px;font-family:var(--sans);display:flex;align-items:flex-start;gap:10px;opacity:0;transition:all .2s;pointer-events:none;box-shadow:0 3px 8px rgba(0,0,0,.25)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.success{background:var(--green-bg);color:var(--green);border-left:4px solid var(--green)}
+.toast.error{background:var(--red-bg);color:var(--red);border-left:4px solid var(--red)}
+.toast.warn{background:var(--orange-bg);color:var(--orange);border-left:4px solid var(--orange)}
+.toast.info{background:var(--purple-bg);color:var(--purple);border-left:4px solid var(--purple)}
+.toast-icon{font-size:20px;flex-shrink:0;margin-top:-1px}
+.toast-msg{flex:1;line-height:1.4}
+
+/* MODAL */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:400;display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;pointer-events:none;transition:opacity .2s}
+.overlay.show{opacity:1;pointer-events:all}
+.modal{background:white;border-radius:4px;padding:24px;width:100%;max-width:320px;transform:scale(.95);transition:transform .2s;box-shadow:0 11px 15px rgba(0,0,0,.2)}
+.overlay.show .modal{transform:scale(1)}
+.modal-title{font-size:18px;font-weight:700;margin-bottom:10px}
+.modal-body{font-size:14px;color:var(--text2);line-height:1.6;margin-bottom:20px}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.mbtn{padding:9px 16px;border-radius:4px;font-size:14px;font-weight:500;cursor:pointer;border:none;font-family:var(--sans)}
+.mbtn.flat{background:none;color:var(--primary)}.mbtn.flat:active{background:rgba(21,101,192,.08)}
+.mbtn.raised{background:var(--accent);color:white}
+.mbtn.raised-p{background:var(--purple);color:white}
+.mbtn.raised-o{background:var(--orange);color:white}
+.prog-wrap{height:4px;background:var(--border);border-radius:2px;margin:12px 0;overflow:hidden;display:none}
+.prog-bar{height:100%;background:var(--primary);width:0;transition:width .3s}
+.prog-text{font-size:12px;color:var(--text2);font-family:var(--mono);min-height:18px}
+
+/* OVERFLOW MENU */
+.overflow-menu{position:absolute;top:56px;right:8px;background:white;border-radius:4px;box-shadow:0 8px 24px rgba(0,0,0,.2);z-index:200;min-width:200px;display:none}
+.overflow-menu.show{display:block}
+.menu-item{padding:16px 24px;font-size:16px;cursor:pointer;color:var(--text);transition:background .1s;border-bottom:1px solid var(--border)}
+.menu-item:last-child{border-bottom:none}
+.menu-item:active{background:var(--surface)}
+.dav-status{font-size:12px;font-family:var(--mono);padding:4px 8px;border-radius:3px;display:inline-block}
+.dav-status.ok{background:var(--green-bg);color:var(--green)}
+.dav-status.fail{background:var(--red-bg);color:var(--red)}
+.dav-status.testing{background:var(--orange-bg);color:var(--orange)}
+
+::-webkit-scrollbar{width:3px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border)}
+</style>
+</head>
+<body>
+
+<input id="scanInput" type="text" style="position:absolute;opacity:0;width:1px;height:1px;top:0;left:0;" autocomplete="off" autocorrect="off" spellcheck="false">
+<div class="toast" id="toast"><span class="toast-icon" id="toastIcon"></span><span class="toast-msg" id="toastMsg"></span></div>
+
+<div class="overflow-menu" id="overflowMenu">
+  <div class="menu-item" id="menuEndBatch" onclick="confirmEndBatch();closeMenu()">Finalizar Este Lote</div>
+  <div class="menu-item" id="menuClose" onclick="closeMenu()">Cerrar Menú</div>
+</div>
+
+<div class="appbar">
+  <span class="appbar-title" id="appTitle">防重复扫描</span>
+  <div class="appbar-actions">
+    <div class="lang-switcher">
+      <button class="lang-pill" onclick="setLang('zh')">中</button>
+      <button class="lang-pill" onclick="setLang('en')">EN</button>
+      <button class="lang-pill active" onclick="setLang('es')">ES</button>
+    </div>
+    <button class="icon-btn" onclick="toggleMenu()">⋮</button>
+  </div>
+</div>
+
+<div class="net-strip">
+  <div class="net-pill" id="netPill"><div class="net-dot"></div><span id="netLabel">...</span></div>
+  <span class="sync-text" id="syncText"></span>
+</div>
+
+<!-- DUAL COUNTER -->
+<div class="count-banner">
+  <div class="count-block batch">
+    <div class="count-number" id="countBatch">0</div>
+    <div class="count-label" id="lblBatchCount">本批数量</div>
+    <span class="batch-badge" id="batchBadge">L1</span>
+  </div>
+  <div class="count-block total">
+    <div class="count-number" id="countTotal">0</div>
+    <div class="count-label" id="lblTotalCount">累计总数</div>
+  </div>
+</div>
+
+<!-- SCAN PANEL -->
+<div class="panel active" id="panelScan">
+  <div class="prefix-bar" id="prefixBar">
+    <span class="prefix-bar-label" id="prefixBarLabel">Regla:</span>
+    <button class="prefix-chip active" id="chipML" onclick="quickSetPrefix('ML')">MERCADOLIBRE</button>
+    <button class="prefix-chip" id="chipJT" onclick="quickSetPrefix('JT')">J&amp;T Express</button>
+    <button class="prefix-chip" id="chipIMILE" onclick="quickSetPrefix('IMILE')">iMile</button>
+    <button class="prefix-chip" id="chipCustom" onclick="quickSetPrefix('custom')">Personalizado</button>
+    <button class="prefix-chip all" id="chipAll" onclick="quickSetPrefix('')">Todos</button>
+  </div>
+  <div class="input-row">
+    <input class="barcode-field" id="manualField" placeholder="Escanear o ingresar código..." autocomplete="off" autocorrect="off">
+    <button class="ok-btn" onclick="submitManual()">OK</button>
+  </div>
+  <div class="table-header">
+    <div class="th" id="thNum">N°</div>
+    <div class="th" id="thBarcode" style="text-align:left;padding-left:8px">Código</div>
+    <div class="th" id="thDate">Fecha</div>
+  </div>
+  <div class="record-list" id="recordList">
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">📦</div>
+      <div class="empty-text" id="emptyText">Sin registros<br>Toca Escanear para comenzar</div>
+    </div>
+  </div>
+  <!-- Bottom action bar: end batch only -->
+  <div class="batch-end-bar">
+    <button class="batch-end-btn archive" id="btnEndBatch" onclick="confirmEndBatch()">
+      <span>📦</span><span id="lblEndBatch">Finalizar Lote</span>
+    </button>
+  </div>
+  <button class="scan-fab" id="scanFab" onclick="toggleScanner()">
+    <span class="scan-icon">⬛</span>
+    <span id="scanFabLabel">E S C A N E A R</span>
+  </button>
+</div>
+
+<!-- HISTORY PANEL -->
+<div class="panel" id="panelHistory">
+  <div class="history-summary">
+    <div>
+      <div class="history-summary-text" id="lblHistorySummary">Lotes archivados</div>
+      <div class="history-summary-num"><span id="historyBatchCount">0</span> <span id="lblLotes" style="font-size:14px;font-weight:400">lotes</span> · <span id="historyTotalCount">0</span> <span id="lblItems" style="font-size:14px;font-weight:400">items</span></div>
+    </div>
+
+  </div>
+  <div id="batchHistoryList"></div>
+</div>
+
+<!-- SETTINGS PANEL -->
+<div class="panel" id="panelSettings">
+  <div class="section-header" id="shPrefix">Filtro de Prefijo</div>
+  <div class="section">
+    <div class="setting-row col">
+      <div class="setting-label" id="lblPreset">Seleccionar Ajuste Predet.</div>
+      <select class="s-select" id="presetSelect" onchange="applyPreset()">
+        <option value="ML" id="optML">MercadoLibre (prefijo: 46)</option>
+        <option value="JT" id="optJT">J&amp;T Express (prefijo: GC, JMX)</option>
+        <option value="IMILE" id="optIMILE">iMile (prefijo: 48, GC)</option>
+        <option value="custom" id="optCustom">Prefijo personalizado...</option>
+        <option value="" id="optAll">-- Aceptar todos los códigos --</option>
+      </select>
+    </div>
+    <div class="setting-row">
+      <div><div class="setting-label" id="lblCurPrefix">Prefijo Activo</div><div class="setting-sub" id="lblPrefixSub">Vacío = acepta todo</div></div>
+      <input class="s-input" id="prefixDisplay" value="" placeholder="（无限制）" readonly>
+    </div>
+    <div class="setting-row col" id="customPrefixRow" style="display:none">
+      <div class="setting-label" id="lblCustomPrefix">Prefijos personalizados (separados por coma)</div>
+      <input class="s-input full" id="customPrefixInput" placeholder="ej: 465, GC, JMX">
+    </div>
+  </div>
+
+  <div class="section-header" id="shBarcode">Reglas de Código</div>
+  <div class="section">
+    <div class="setting-row"><div class="setting-label" id="lblMinLen">Longitud Mínima</div><input class="s-input" id="minLen" type="number" value="10" min="1"></div>
+    <div class="setting-row"><div class="setting-label" id="lblMaxLen">Longitud Máxima</div><input class="s-input" id="maxLen" type="number" value="19"></div>
+    <div class="setting-row">
+      <div><div class="setting-label" id="lblContinuous">Escaneo Continuo</div><div class="setting-sub" id="lblContinuousSub">Listo automáticamente tras cada escaneo</div></div>
+      <button class="toggle-wrap" id="continuousToggle" onclick="toggleContinuous()"></button>
+    </div>
+  </div>
+
+  <div class="section-header" id="shVoice">Lectura de Voz</div>
+  <div class="section">
+    <div class="setting-row">
+      <div><div class="setting-label" id="lblVoice">Anunciar conteo tras escaneo</div><div class="setting-sub" id="lblVoiceSub">p.ej. "250 escaneados"</div></div>
+      <button class="toggle-wrap on" id="voiceToggle" onclick="toggleVoice()"></button>
+    </div>
+    <div class="setting-row col">
+      <div class="setting-label" id="lblVoiceLang">Idioma</div>
+      <div class="lang-opts">
+        <label class="lang-opt"><input type="radio" name="lang" value="zh" id="langZh"> 中文</label>
+        <label class="lang-opt"><input type="radio" name="lang" value="es" id="langEs" checked> Español</label>
+      </div>
+    </div>
+    <div class="setting-row"><div class="setting-label" id="lblVoiceTest">Probar voz</div><button class="test-btn" id="btnVoiceTest" onclick="testVoice()">▶ Probar</button></div>
+  </div>
+
+  <div class="section-header" id="shWebdav">Copia de Seguridad WebDAV</div>
+  <div class="section">
+    <div class="setting-row" style="background:#FFF8E1;border-left:3px solid #FF8F00;padding-left:13px">
+      <div style="font-size:12px;color:#E65100;line-height:1.5" id="webdavWarning">⚠️ La config solo se guarda en este navegador. Vuelve a ingresar en otro dispositivo.</div>
+    </div>
+    <div class="setting-row" style="background:#E3F2FD;padding:10px 16px">
+      <div style="font-size:12px;color:#1565C0;line-height:1.6" id="webdavInfo">
+        💡 <strong>Almacenamiento WebDAV:</strong><br>
+        Los archivos se suben via PUT al servidor WebDAV configurado.<br>
+        Los archivos se organizan por carpeta de fecha: /backups/<strong>20260304</strong>/archivo.txt
+      </div>
+    </div>
+    <div class="setting-row col"><div class="setting-label" id="lblDavUrl">URL del Servidor WebDAV</div><input class="s-input full" id="davUrl" placeholder="https://dav.example.com/remote.php/dav/files/user/" value="https://hakata.infini-cloud.net/dav/" type="url"></div>
+    <div class="setting-row col"><div class="setting-label" id="lblDavUser">Usuario</div><input class="s-input full" id="davUser" placeholder="username"></div>
+    <div class="setting-row col"><div class="setting-label" id="lblDavPass">Contraseña</div><input class="s-input full" id="davPass" type="password" placeholder="••••••"></div>
+    <div class="setting-row col"><div class="setting-label" id="lblDavDir">Directorio Raíz (subcarpeta de fecha automática)</div><input class="s-input full" id="davDir" placeholder="backups" value="backups"></div>
+    <div class="setting-row">
+      <div><div class="setting-label" id="lblDavTest">Prueba de Conexión</div><span class="dav-status" id="webdavStatus" style="display:none"></span></div>
+      <button class="test-btn" id="btnDavTest" onclick="testWebDAV()">Probar Conexión</button>
+    </div>
+  </div>
+
+  <div class="section-header" id="shExport">Ajustes de Exportación</div>
+  <div class="section">
+    <div class="setting-row col">
+      <div><div class="setting-label" id="lblFileTpl">Plantilla de Nombre</div>
+      <div class="setting-sub" id="lblFileTplSub">Patrón: scan_export_prefijo_lote_cantidad_timestamp</div></div>
+      <span style="font-size:11px;font-family:var(--mono);color:var(--text2);word-break:break-all;padding:4px 0" id="exportPreview"></span>
+    </div>
+  </div>
+
+  <div class="section-header" id="shResetAll" style="color:var(--accent)">Reiniciar Todo</div>
+  <div class="section">
+    <div class="setting-row" style="background:#FFEBEE;">
+      <div><div class="setting-label" id="lblResetAll" style="color:var(--red)">Finalizar y limpiar todos los lotes</div><div class="setting-sub" id="lblResetAllSub">Borra el lote actual + todos los lotes archivados, reinicia el total acumulado a cero</div></div>
+    </div>
+    <div class="setting-row">
+      <button style="width:100%;padding:13px;background:var(--accent);color:white;border:none;border-radius:4px;font-size:15px;font-weight:700;cursor:pointer;font-family:var(--sans)" id="btnResetAll" onclick="confirmResetAll()">⚠ Reiniciar Todo</button>
+    </div>
+  </div>
+
+  <button class="save-btn" id="btnSave" onclick="saveSettings()">G U A R D A R  A J U S T E S</button>
+</div>
+
+<nav class="bottom-nav">
+  <button class="nav-item active" id="navScan" onclick="switchTab('scan')"><span class="nav-icon">📷</span><span id="navLblScan">Escanear</span></button>
+  <button class="nav-item" id="navHistory" onclick="switchTab('history')"><span class="nav-icon">📋</span><span id="navLblHistory">Lotes</span><span class="nav-badge" id="navBadge" style="display:none">0</span></button>
+  <button class="nav-item" id="navSettings" onclick="switchTab('settings')"><span class="nav-icon">⚙️</span><span id="navLblSettings">Ajustes</span></button>
+</nav>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle"></div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="prog-wrap" id="progWrap"><div class="prog-bar" id="progBar"></div></div>
+    <div class="prog-text" id="progText"></div>
+    <div class="modal-btns" id="modalBtns"></div>
+  </div>
+</div>
+
+<script>
+// ── PRESETS ───────────────────────────────────────────────────────────────────
+const PRESETS = {
+  ML:    { name:'MercadoLibre', prefixes:['46'],       minLen:10, maxLen:13 },
+  JT:    { name:'JT Express',   prefixes:['GC','JMX'], minLen:14, maxLen:19 },
+  IMILE: { name:'iMile',        prefixes:['48','GC'],  minLen:13, maxLen:19 }
+};
+
+// ── I18N ──────────────────────────────────────────────────────────────────────
+const I18N = {
+  zh:{
+    appTitle:'防重复扫描',
+    lblBatchCount:'本批数量', lblTotalCount:'累计总数',
+    online:'在线', offline:'离线',
+    thNum:'序号', thBarcode:'条码', thDate:'日期',
+    emptyText:'暂无扫描记录\n点击下方「扫一扫」开始',
+    scanFabIdle:'扫 一 扫', scanFabActive:'扫描枪已激活',
+    prefixBarLabel:'规则:', chipCustom:'自定义', chipAll:'全部',
+    lblExportCur:'导出本批', lblEndBatch:'结束本批 →归档',
+    navLblScan:'扫描', navLblHistory:'批次', navLblSettings:'设置',
+    lblHistorySummary:'已归档批次', lblLotes:'批', lblItems:'件',
+    btnExportAll:'⬇ 导出全部',
+    shPrefix:'前缀过滤规则', lblPreset:'选择预设规则',
+    optML:'MercadoLibre（前缀：46）', optJT:'J&T Express（前缀：GC, JMX）', optIMILE:'iMile（前缀：48, GC）',
+    optCustom:'自定义前缀...', optAll:'-- 接受所有条码（无限制）--',
+    lblCurPrefix:'当前生效前缀', lblPrefixSub:'空=接受所有条码',
+    lblCustomPrefix:'自定义前缀（逗号分隔）',
+    shBarcode:'条码规则', lblMinLen:'最短长度', lblMaxLen:'最长长度',
+    lblContinuous:'连续扫码模式', lblContinuousSub:'扫完自动准备下一次',
+    shVoice:'语音播报', lblVoice:'扫码后语音报数量', lblVoiceSub:'如「已扫 50 件」',
+    lblVoiceLang:'播报语言', lblVoiceTest:'试听', btnVoiceTest:'▶ 试听',
+    shWebdav:'WebDAV 云备份',
+    webdavWarning:'⚠️ 配置仅保存在本设备浏览器中，换设备需重新填写。',
+    webdavInfo:'💡 <strong>WebDAV 云备份：</strong><br>结束批次时自动上传至 WebDAV 服务器。<br>按日期文件夹保存：/backups/<strong>20260304</strong>/批次N_文件名.txt',
+    lblDavUrl:'WebDAV 服务器地址', lblDavUser:'用户名',
+    lblDavPass:'密码', lblDavDir:'根目录（日期子文件夹自动创建）',
+    lblDavTest:'连接测试', btnDavTest:'测试连接',
+    shExport:'导出设置', lblFileTpl:'文件名模板',
+    lblFileTplSub:'规则：scan_export_前缀_批次_总数_时间戳',
+    btnSave:'保 存 设 置',
+    menuEndBatch:'结束本批次', menuClose:'关闭菜单',
+    toastScanOk:'扫描成功：', toastDup:'重复！「%s」已在第 %n 条扫入（本批）', toastDupBatch:'跨批次重复！「%s」已存在于第 %b 批（第 %n 条）',
+    toastLen:'条码长度 %l 超出范围 (%min–%max)',
+    toastPrefix:'前缀不匹配%p：%s', toastNoData:'暂无数据', toastNoBatches:'没有已归档批次',
+    toastExported:'已导出 %n 条 → %f', toastSaved:'设置已保存',
+    toastGhOk:'WebDAV 连接成功！', toastGhFail:'连接失败：',
+    toastBatchArchived:'第 %n 批已归档（%c 条）',
+    confirmEndTitle:'结束并归档本批？',
+    confirmEndBody:'本批共 %c 条记录将归档为「第 %n 批」，界面清零开始新批次。',
+    cancelBtn:'取消', confirmEndBtn:'确认归档',
+    forceClearBtn:'强制清空', localSaveBtn:'已本地备份，继续',
+    backupFail:'⚠️ 备份失败：%e', backupFailQ:'是否仍然归档？',
+    offlineMsg:'⚠️ 当前离线，已下载本地备份文件。',
+    backupOk:'批次已归档备份 → %f',
+    chipCustomPrompt:'请先在设置中配置自定义前缀',
+    ghTesting:'⏳ 测试中...', ghOk:'✅ 连接成功', ghFail:'❌ ',
+    batchLabel:'第 %n 批', batchExportBtn:'导出',
+    confirmClearAllTitle:'清除所有批次历史？',
+    confirmClearAllBody:'将删除所有 %n 个已归档批次（共 %c 条），此操作不可撤销。',
+    clearAllBtn:'全部清除',
+    shResetAll:'重置所有数据', lblResetAll:'结束并清空所有批次', lblResetAllSub:'清空本批 + 所有历史批次，重置累计总数为零', btnResetAll:'⚠ 全部重置',
+  },
+  en:{
+    appTitle:'Anti-Dup Scanner',
+    lblBatchCount:'This Batch', lblTotalCount:'Cumulative Total',
+    online:'Online', offline:'Offline',
+    thNum:'No.', thBarcode:'Barcode', thDate:'Date',
+    emptyText:'No records\nTap Scan below to start',
+    scanFabIdle:'S C A N', scanFabActive:'Scanner active',
+    prefixBarLabel:'Rule:', chipCustom:'Custom', chipAll:'All',
+    lblExportCur:'Export', lblEndBatch:'End Batch →Archive',
+    navLblScan:'Scan', navLblHistory:'Batches', navLblSettings:'Settings',
+    lblHistorySummary:'Archived batches', lblLotes:'batches', lblItems:'items',
+    btnExportAll:'⬇ Export All',
+    shPrefix:'Prefix Filter', lblPreset:'Select Preset',
+    optML:'MercadoLibre (prefix: 46)', optJT:'J&T Express (prefix: GC, JMX)', optIMILE:'iMile (prefix: 48, GC)',
+    optCustom:'Custom prefix...', optAll:'-- Accept all barcodes --',
+    lblCurPrefix:'Active Prefix', lblPrefixSub:'Empty = accept all',
+    lblCustomPrefix:'Custom prefixes (comma-separated)',
+    shBarcode:'Barcode Rules', lblMinLen:'Min Length', lblMaxLen:'Max Length',
+    lblContinuous:'Continuous Scan', lblContinuousSub:'Auto-ready after each scan',
+    shVoice:'Voice Readout', lblVoice:'Announce count after scan', lblVoiceSub:'e.g. "50 scanned"',
+    lblVoiceLang:'Language', lblVoiceTest:'Test voice', btnVoiceTest:'▶ Test',
+    shWebdav:'WebDAV Cloud Backup',
+    webdavWarning:'⚠️ Config saved in this browser only. Re-enter on another device.',
+    webdavInfo:'💡 <strong>WebDAV Backup:</strong><br>Auto-uploads when a batch is archived.<br>Files organized by date folder: /backups/<strong>20260304</strong>/batch_N_file.txt',
+    lblDavUrl:'WebDAV Server URL', lblDavUser:'Username',
+    lblDavPass:'Password', lblDavDir:'Root Directory (date subfolder auto-created)',
+    lblDavTest:'Connection Test', btnDavTest:'Test Connection',
+    shExport:'Export Settings', lblFileTpl:'Filename Template',
+    lblFileTplSub:'Pattern: scan_export_prefix_batch_count_timestamp',
+    btnSave:'S A V E  S E T T I N G S',
+    menuEndBatch:'End This Batch', menuClose:'Close Menu',
+    toastScanOk:'Scanned: ', toastDup:'Duplicate! "%s" already in this batch at #%n', toastDupBatch:'Cross-batch duplicate! "%s" exists in Batch %b (record #%n)',
+    toastLen:'Length %l out of range (%min–%max)',
+    toastPrefix:'Prefix mismatch%p: %s', toastNoData:'No data', toastNoBatches:'No archived batches',
+    toastExported:'Exported %n records → %f', toastSaved:'Settings saved',
+    toastGhOk:'WebDAV connected!', toastGhFail:'Connection failed: ',
+    toastBatchArchived:'Batch %n archived (%c records)',
+    confirmEndTitle:'End & archive this batch?',
+    confirmEndBody:'%c records will be archived as Batch %n. The scanner will reset for the next batch.',
+    cancelBtn:'Cancel', confirmEndBtn:'Archive Batch',
+    forceClearBtn:'Force Archive', localSaveBtn:'Local saved, continue',
+    backupFail:'⚠️ Backup failed: %e', backupFailQ:'Archive anyway?',
+    offlineMsg:'⚠️ Offline — local backup file downloaded.',
+    backupOk:'Batch archived → %f',
+    chipCustomPrompt:'Configure custom prefix in Settings first',
+    ghTesting:'⏳ Testing...', ghOk:'✅ Connected', ghFail:'❌ ',
+    batchLabel:'Batch %n', batchExportBtn:'Export',
+    confirmClearAllTitle:'Clear all batch history?',
+    confirmClearAllBody:'This will delete all %n archived batches (%c records). Cannot be undone.',
+    clearAllBtn:'Clear All',
+    shResetAll:'Reset All Data', lblResetAll:'End & clear all batches', lblResetAllSub:'Clears current batch + all archived batches, resets cumulative total to zero', btnResetAll:'⚠ Reset Everything',
+  },
+  es:{
+    appTitle:'Escáner Anti-Dup',
+    lblBatchCount:'Este Lote', lblTotalCount:'Total Acumulado',
+    online:'En línea', offline:'Sin conexión',
+    thNum:'N°', thBarcode:'Código', thDate:'Fecha',
+    emptyText:'Sin registros\nToca Escanear para comenzar',
+    scanFabIdle:'E S C A N E A R', scanFabActive:'Escáner activo',
+    prefixBarLabel:'Regla:', chipCustom:'Personalizado', chipAll:'Todos',
+    lblExportCur:'Exportar', lblEndBatch:'Finalizar Lote →Archivar',
+    navLblScan:'Escanear', navLblHistory:'Lotes', navLblSettings:'Ajustes',
+    lblHistorySummary:'Lotes archivados', lblLotes:'lotes', lblItems:'items',
+    btnExportAll:'⬇ Exportar Todo',
+    shPrefix:'Filtro de Prefijo', lblPreset:'Seleccionar Ajuste Predet.',
+    optML:'MercadoLibre (prefijo: 46)', optJT:'J&T Express (prefijo: GC, JMX)', optIMILE:'iMile (prefijo: 48, GC)',
+    optCustom:'Prefijo personalizado...', optAll:'-- Aceptar todos los códigos --',
+    lblCurPrefix:'Prefijo Activo', lblPrefixSub:'Vacío = acepta todo',
+    lblCustomPrefix:'Prefijos personalizados (separados por coma)',
+    shBarcode:'Reglas de Código', lblMinLen:'Longitud Mínima', lblMaxLen:'Longitud Máxima',
+    lblContinuous:'Escaneo Continuo', lblContinuousSub:'Listo automáticamente tras cada escaneo',
+    shVoice:'Lectura de Voz', lblVoice:'Anunciar conteo tras escaneo', lblVoiceSub:'p.ej. "50 escaneados"',
+    lblVoiceLang:'Idioma', lblVoiceTest:'Probar voz', btnVoiceTest:'▶ Probar',
+    shWebdav:'Copia de Seguridad WebDAV',
+    webdavWarning:'⚠️ La config solo se guarda en este navegador. Vuelve a ingresar en otro dispositivo.',
+    webdavInfo:'💡 <strong>Copia de Seguridad WebDAV:</strong><br>Se sube automáticamente al archivar un lote.<br>Archivos organizados por carpeta de fecha: /backups/<strong>20260304</strong>/lote_N_archivo.txt',
+    lblDavUrl:'URL del Servidor WebDAV', lblDavUser:'Usuario',
+    lblDavPass:'Contraseña', lblDavDir:'Directorio Raíz (subcarpeta de fecha automática)',
+    lblDavTest:'Prueba de Conexión', btnDavTest:'Probar Conexión',
+    shExport:'Ajustes de Exportación', lblFileTpl:'Plantilla de Nombre',
+    lblFileTplSub:'Patrón: scan_export_prefijo_lote_cantidad_timestamp',
+    btnSave:'G U A R D A R  A J U S T E S',
+    menuEndBatch:'Finalizar Este Lote', menuClose:'Cerrar Menú',
+    toastScanOk:'Escaneado: ', toastDup:'¡Duplicado! "%s" ya en este lote #%n', toastDupBatch:'¡Duplicado entre lotes! "%s" existe en Lote %b (registro #%n)',
+    toastLen:'Longitud %l fuera de rango (%min–%max)',
+    toastPrefix:'Prefijo no coincide%p: %s', toastNoData:'Sin datos', toastNoBatches:'Sin lotes archivados',
+    toastExported:'%n registros exportados → %f', toastSaved:'Ajustes guardados',
+    toastGhOk:'¡WebDAV conectado!', toastGhFail:'Conexión fallida: ',
+    toastBatchArchived:'Lote %n archivado (%c registros)',
+    confirmEndTitle:'¿Finalizar y archivar este lote?',
+    confirmEndBody:'%c registros serán archivados como Lote %n. El escáner se reiniciará para el siguiente lote.',
+    cancelBtn:'Cancelar', confirmEndBtn:'Archivar Lote',
+    forceClearBtn:'Forzar Archivo', localSaveBtn:'Guardado local, continuar',
+    backupFail:'⚠️ Error de respaldo: %e', backupFailQ:'¿Archivar de todos modos?',
+    offlineMsg:'⚠️ Sin conexión — archivo de respaldo descargado.',
+    backupOk:'Lote archivado → %f',
+    chipCustomPrompt:'Configura el prefijo personalizado en Ajustes primero',
+    ghTesting:'⏳ Probando...', ghOk:'✅ Conectado', ghFail:'❌ ',
+    batchLabel:'Lote %n', batchExportBtn:'Exportar',
+    confirmClearAllTitle:'¿Limpiar todo el historial?',
+    confirmClearAllBody:'Se eliminarán los %n lotes archivados (%c registros en total). Esta acción no se puede deshacer.',
+    clearAllBtn:'Limpiar Todo',
+    shResetAll:'Reiniciar Todo', lblResetAll:'Finalizar y limpiar todos los lotes', lblResetAllSub:'Borra el lote actual + todos los lotes archivados, reinicia el total acumulado a cero', btnResetAll:'⚠ Reiniciar Todo',
+  }
+};
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+const DB_KEY='pda_v4_records', SET_KEY='pda_v4_settings', BATCH_KEY='pda_v4_batches', PENDING_KEY='pda_v4_pending';
+let records=[], batches=[], pendingSync=[], nextId=1, isOnline=navigator.onLine;
+let scanActive=false, toastTimerId=null, uiLang='es', currentBatchNum=1;
+let cfg={
+  presetKey:'ML', prefixes:['46'], minLen:10, maxLen:13,
+  continuous:false, voiceEnabled:true, voiceLang:'es',
+  davUrl:'https://hakata.infini-cloud.net/dav/', davUser:'', davPass:'', davDir:'backups'
+};
+
+// ── LANGUAGE ──────────────────────────────────────────────────────────────────
+function t(key){ return (I18N[uiLang]||I18N.es)[key] || key; }
+
+function setLang(lang){
+  uiLang=lang;
+  document.querySelectorAll('.lang-pill').forEach(b=>{
+    b.classList.toggle('active', b.textContent.trim()==={zh:'中',en:'EN',es:'ES'}[lang]);
+  });
+  applyI18N();
+}
+
+function applyI18N(){
+  const ids=['appTitle','lblBatchCount','lblTotalCount','thNum','thDate','prefixBarLabel',
+    'lblEndBatch','navLblScan','navLblHistory','navLblSettings',
+    'lblHistorySummary','lblLotes','lblItems',
+    'shPrefix','lblPreset','lblCurPrefix','lblPrefixSub','lblCustomPrefix',
+    'shBarcode','lblMinLen','lblMaxLen','lblContinuous','lblContinuousSub',
+    'shVoice','lblVoice','lblVoiceSub','lblVoiceLang','lblVoiceTest',
+    'shWebdav','lblDavUrl','lblDavUser','lblDavPass','lblDavDir','lblDavTest',
+    'shExport','lblFileTpl','lblFileTplSub',
+    'menuEndBatch','menuClose',
+    'btnVoiceTest','btnDavTest','btnSave','shResetAll','lblResetAll','lblResetAllSub','btnResetAll'];
+  ids.forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=t(id);});
+  document.getElementById('thBarcode').textContent=t('thBarcode');
+  document.getElementById('webdavWarning').textContent=t('webdavWarning');
+  document.getElementById('webdavInfo').innerHTML=t('webdavInfo');
+  document.getElementById('chipCustom').textContent=t('chipCustom');
+  document.getElementById('chipAll').textContent=t('chipAll');
+  ['optML','optJT','optIMILE','optCustom','optAll'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.textContent=t(id);
+  });
+  document.getElementById('scanFabLabel').textContent=scanActive?t('scanFabActive'):t('scanFabIdle');
+  const et=document.getElementById('emptyText');
+  if(et) et.innerHTML=t('emptyText').replace('\n','<br>');
+  updateExportPreview();
+  renderBatchHistory();
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+function init(){
+  loadCfg(); loadRecords(); loadBatches(); loadPending();
+  computeBatchNum();
+  updateNetUI(); renderList(); updateCounters(); applyI18N(); updateChipBar();
+
+  const si=document.getElementById('scanInput');
+  si.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){const v=si.value.trim();if(v){processBarcode(v);si.value='';}e.preventDefault();}
+  });
+  let bt; si.addEventListener('input',()=>{
+    clearTimeout(bt);
+    bt=setTimeout(()=>{const v=si.value.trim();if(v.length>=cfg.minLen&&v.length<=cfg.maxLen){processBarcode(v);si.value='';}},150);
+  });
+  document.getElementById('manualField').addEventListener('keydown',e=>{if(e.key==='Enter')submitManual();});
+  document.addEventListener('click',e=>{
+    if(scanActive&&e.target.id!=='manualField'&&!e.target.closest('#panelSettings')&&!e.target.closest('.overlay')&&!e.target.closest('.overflow-menu'))
+      document.getElementById('scanInput').focus();
+    if(!e.target.closest('.overflow-menu')&&!e.target.closest('.icon-btn'))closeMenu();
+  });
+  window.addEventListener('online',()=>{isOnline=true;updateNetUI();});
+  window.addEventListener('offline',()=>{isOnline=false;updateNetUI();});
+}
+
+// ── STORAGE ───────────────────────────────────────────────────────────────────
+function loadRecords(){try{records=JSON.parse(localStorage.getItem(DB_KEY)||'[]');}catch{records=[];}nextId=records.length?Math.max(...records.map(r=>r.id))+1:1;}
+function saveRecords(){localStorage.setItem(DB_KEY,JSON.stringify(records));}
+function loadBatches(){try{batches=JSON.parse(localStorage.getItem(BATCH_KEY)||'[]');}catch{batches=[];}}
+function saveBatches(){localStorage.setItem(BATCH_KEY,JSON.stringify(batches));}
+function loadCfg(){try{Object.assign(cfg,JSON.parse(localStorage.getItem(SET_KEY)||'{}'));}catch{}applyCfgToUI();}
+function saveCfg(){localStorage.setItem(SET_KEY,JSON.stringify(cfg));}
+function loadPending(){try{pendingSync=JSON.parse(localStorage.getItem(PENDING_KEY)||'[]');}catch{pendingSync=[];}}
+function savePending(){localStorage.setItem(PENDING_KEY,JSON.stringify(pendingSync));}
+
+function computeBatchNum(){
+  currentBatchNum = batches.length + 1;
+  updateBatchBadge();
+}
+
+function updateBatchBadge(){
+  const badge=document.getElementById('batchBadge');
+  if(badge) badge.textContent='L'+currentBatchNum;
+}
+
+// ── NETWORK ───────────────────────────────────────────────────────────────────
+function updateNetUI(){
+  const pill=document.getElementById('netPill'),label=document.getElementById('netLabel');
+  pill.className='net-pill '+(isOnline?'online':'offline');
+  label.textContent=isOnline?t('online'):t('offline');
+  const st=document.getElementById('syncText');
+  st.textContent=pendingSync.length>0?`⬆ ${pendingSync.length}`:'';
+}
+
+// ── QUICK PREFIX BAR ──────────────────────────────────────────────────────────
+function quickSetPrefix(key){
+  if(key==='custom'){
+    if(!cfg.prefixes.length||PRESETS[cfg.presetKey]){
+      toast('warn','⚠️',t('chipCustomPrompt')); switchTab('settings'); return;
+    }
+  }
+  cfg.presetKey=key;
+  if(key&&PRESETS[key]){
+    cfg.prefixes=[...PRESETS[key].prefixes];
+    cfg.minLen=PRESETS[key].minLen; cfg.maxLen=PRESETS[key].maxLen;
+  }else if(key===''){
+    cfg.prefixes=[]; cfg.minLen=1; cfg.maxLen=100;
+  }
+  saveCfg(); updateChipBar(); updatePrefixDisplay(); updateExportPreview();
+}
+
+function updateChipBar(){
+  ['chipML','chipJT','chipIMILE','chipCustom','chipAll'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  const k=cfg.presetKey;
+  if(k==='ML') document.getElementById('chipML').classList.add('active');
+  else if(k==='JT') document.getElementById('chipJT').classList.add('active');
+  else if(k==='IMILE') document.getElementById('chipIMILE').classList.add('active');
+  else if(k==='custom') document.getElementById('chipCustom').classList.add('active');
+  else document.getElementById('chipAll').classList.add('active');
+}
+
+// ── SCANNER ───────────────────────────────────────────────────────────────────
+function toggleScanner(){
+  scanActive=!scanActive;
+  const fab=document.getElementById('scanFab'),lbl=document.getElementById('scanFabLabel');
+  if(scanActive){fab.classList.add('active');lbl.textContent=t('scanFabActive');document.getElementById('scanInput').focus();}
+  else{fab.classList.remove('active');lbl.textContent=t('scanFabIdle');}
+}
+function submitManual(){const f=document.getElementById('manualField');const v=f.value.trim();if(!v)return;processBarcode(v);f.value='';}
+
+// ── PROCESS BARCODE ───────────────────────────────────────────────────────────
+function processBarcode(code){
+  if(code.length<cfg.minLen||code.length>cfg.maxLen){
+    toast('warn','⚠️',t('toastLen').replace('%l',code.length).replace('%min',cfg.minLen).replace('%max',cfg.maxLen));
+    vibrate(200); speakError(); return;
+  }
+  if(cfg.prefixes.length>0){
+    if(!cfg.prefixes.some(p=>code.startsWith(p))){
+      const pn=cfg.presetKey&&PRESETS[cfg.presetKey]?'（'+PRESETS[cfg.presetKey].name+'）':'';
+      toast('error','🔴',t('toastPrefix').replace('%p',pn).replace('%s',code));
+      vibrate(200); speakError(); return;
+    }
+  }
+  // Check duplicate in current batch
+  const dup=records.find(r=>r.barcode===code);
+  if(dup){
+    toast('error','🔴',t('toastDup').replace('%s',code).replace('%n',dup.id));
+    vibrate(200); speakError();
+    const row=document.getElementById('row-'+dup.id);
+    if(row){row.classList.add('dup');row.scrollIntoView({behavior:'smooth',block:'center'});setTimeout(()=>row.classList.remove('dup'),2000);}
+    return;
+  }
+  // Check duplicate across archived batches
+  for(let i=0;i<batches.length;i++){
+    const bdup=batches[i].records.find(r=>r.barcode===code);
+    if(bdup){
+      toast('error','🚨',t('toastDupBatch').replace('%s',code).replace('%b',batches[i].num).replace('%n',bdup.id));
+      vibrate([200,100,200]);speakError();return;
+    }
+  }
+  const now=new Date();
+  const rec={id:nextId++,barcode:code,time:fmtTime(now),synced:false};
+  records.unshift(rec); saveRecords();
+  pendingSync.push({barcode:code,time:rec.time}); savePending();
+  updateCounters(); prependRow(rec);
+  toast('success','✅',t('toastScanOk')+code);
+  if(cfg.voiceEnabled) speakCount(records.length);
+}
+
+// ── VOICE ─────────────────────────────────────────────────────────────────────
+function speakCount(n){
+  if(!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance();
+  if(cfg.voiceLang==='es'){u.text=`Escaneado: ${n} ${n===1?'artículo':'artículos'}`;u.lang='es-ES';}
+  else{u.text=`已扫 ${n} 件`;u.lang='zh-CN';}
+  u.rate=1.1; u.volume=1;
+  window.speechSynthesis.speak(u);
+}
+function speakError(){
+  if(!cfg.voiceEnabled||!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance();
+  if(cfg.voiceLang==='es'){u.text='incorrecto';u.lang='es-ES';}
+  else{u.text='错误';u.lang='zh-CN';}
+  u.rate=1.0; u.volume=1;
+  window.speechSynthesis.speak(u);
+}
+function testVoice(){
+  const l=document.querySelector('input[name="lang"]:checked')?.value||'es';
+  const saved=cfg.voiceLang; cfg.voiceLang=l;
+  speakCount(records.length||88);
+  setTimeout(()=>{cfg.voiceLang=saved;},500);
+}
+
+// ── GITHUB ────────────────────────────────────────────────────────────────────
+async function uploadWebDAV(content, filename){
+  if(!cfg.davUrl) return{ok:false,msg:'WebDAV URL not configured'};
+  try{
+    const base=cfg.davUrl.replace(/\/$/,'');
+    const dir=(cfg.davDir||'backups').replace(/^\//,'').replace(/\/$/,'');
+    const now=new Date();
+    const dateFolder=`${now.getFullYear()}${p(now.getMonth()+1)}${p(now.getDate())}`;
+    // Ensure directory exists (MKCOL, ignore errors if already exists)
+    const dirUrl=`${base}/${dir}/${dateFolder}/`;
+    const authHeader=cfg.davUser?'Basic '+btoa(unescape(encodeURIComponent(cfg.davUser+':'+cfg.davPass))):'';
+    const baseHeaders={'Content-Type':'text/plain; charset=utf-8'};
+    if(authHeader) baseHeaders['Authorization']=authHeader;
+    try{
+      await fetch(`${base}/${dir}/`,{method:'MKCOL',headers:authHeader?{'Authorization':authHeader}:{}});
+      await fetch(dirUrl,{method:'MKCOL',headers:authHeader?{'Authorization':authHeader}:{}});
+    }catch{}
+    const fileUrl=`${dirUrl}${filename}`;
+    const res=await fetch(fileUrl,{method:'PUT',headers:baseHeaders,body:content});
+    if([200,201,204].includes(res.status)) return{ok:true};
+    return{ok:false,msg:`HTTP ${res.status}`};
+  }catch(e){return{ok:false,msg:e.message};}
+}
+
+async function testWebDAV(){
+  const url=document.getElementById('davUrl').value.trim();
+  const user=document.getElementById('davUser').value.trim();
+  const pass=document.getElementById('davPass').value;
+  const dir=document.getElementById('davDir').value.trim()||'backups';
+  const saved={davUrl:cfg.davUrl,davUser:cfg.davUser,davPass:cfg.davPass,davDir:cfg.davDir};
+  cfg.davUrl=url;cfg.davUser=user;cfg.davPass=pass;cfg.davDir=dir;
+  const el=document.getElementById('webdavStatus');
+  el.style.display='inline-block';el.className='dav-status testing';el.textContent=t('ghTesting');
+  const res=await uploadWebDAV('connection_test_'+Date.now(),'_test_pda.txt');
+  Object.assign(cfg,saved);
+  if(res.ok){el.className='dav-status ok';el.textContent=t('ghOk');toast('success','✅',t('toastGhOk'));}
+  else{el.className='dav-status fail';el.textContent=t('ghFail')+res.msg;toast('error','❌',t('toastGhFail')+res.msg);}
+}
+
+// ── BATCH MANAGEMENT ──────────────────────────────────────────────────────────
+function confirmEndBatch(){
+  if(!records.length){toast('warn','⚠️',t('toastNoData'));return;}
+  const body=t('confirmEndBody').replace('%c',records.length).replace('%n',currentBatchNum);
+  showModal(t('confirmEndTitle'),body,[
+    {label:t('cancelBtn'),cls:'flat',fn:closeModal},
+    {label:t('confirmEndBtn'),cls:'raised-p',fn:executeEndBatch}
+  ]);
+}
+
+async function executeEndBatch(){
+  const batchNum=currentBatchNum;
+  const ts=new Date();
+  const tsS=`${ts.getFullYear()}${p(ts.getMonth()+1)}${p(ts.getDate())}_${p(ts.getHours())}${p(ts.getMinutes())}${p(ts.getSeconds())}`;
+  const fn=buildBatchFilename(batchNum, records.length, tsS);
+  const content=buildBatchContent(batchNum, records);
+
+  document.getElementById('modalBody').textContent='上传批次备份...';
+  document.getElementById('progWrap').style.display='block';
+  document.getElementById('progBar').style.width='30%';
+  document.getElementById('modalBtns').innerHTML='';
+
+  if(cfg.davUrl&&isOnline){
+    document.getElementById('progBar').style.width='60%';
+    document.getElementById('progText').textContent='WebDAV...';
+    const res=await uploadWebDAV(content,fn);
+    document.getElementById('progBar').style.width='90%';
+    if(!res.ok){
+      document.getElementById('progWrap').style.display='none';
+      document.getElementById('progText').textContent='';
+      document.getElementById('modalBody').innerHTML=`<span style="color:var(--orange)">${t('backupFail').replace('%e',res.msg)}</span><br><br>${t('backupFailQ')}`;
+      addMBtn(t('cancelBtn'),'flat',closeModal);
+      addMBtn(t('forceClearBtn'),'raised-o',()=>doArchiveBatch(batchNum,ts,false));
+      return;
+    }
+  }else{
+    downloadFile(content,fn);
+    document.getElementById('modalBody').innerHTML=`<span style="color:var(--orange)">${t('offlineMsg')}</span>`;
+    document.getElementById('progWrap').style.display='none';
+    addMBtn(t('cancelBtn'),'flat',closeModal);
+    addMBtn(t('localSaveBtn'),'raised-o',()=>doArchiveBatch(batchNum,ts,false));
+    return;
+  }
+  document.getElementById('progBar').style.width='100%';
+  setTimeout(()=>{
+    doArchiveBatch(batchNum,ts,true);
+    toast('info','📦',t('backupOk').replace('%f',fn));
+  },400);
+}
+
+function doArchiveBatch(batchNum, ts, ghSuccess=false){
+  // Archive current records into batches array
+  const prefixName = cfg.presetKey&&PRESETS[cfg.presetKey]?PRESETS[cfg.presetKey].name:'Custom';
+  batches.push({
+    num: batchNum,
+    time: fmtTime(ts),
+    prefix: prefixName,
+    records: [...records],
+    ghOk: ghSuccess
+  });
+  saveBatches();
+  // Reset current scan
+  records=[]; nextId=1; pendingSync=[];
+  saveRecords(); savePending();
+  currentBatchNum = batches.length + 1;
+  updateBatchBadge();
+  updateCounters(); renderList(); updateNetUI();
+  updateNavBadge(); renderBatchHistory();
+  closeModal();
+  toast('info','📦',t('toastBatchArchived').replace('%n',batchNum).replace('%c',batches[batches.length-1].records.length));
+}
+
+function confirmResetAll(){
+  const totalBatches=batches.length;
+  const totalItems=records.length+batches.reduce((s,b)=>s+b.records.length,0);
+  if(totalBatches===0&&records.length===0){toast('warn','⚠️',t('toastNoData'));return;}
+  showModal(t('confirmClearAllTitle'),
+    t('confirmClearAllBody').replace('%n',totalBatches).replace('%c',totalItems),
+    [{label:t('cancelBtn'),cls:'flat',fn:closeModal},{label:t('clearAllBtn'),cls:'raised',fn:doResetAll}]);
+}
+function doResetAll(){
+  records=[];batches=[];nextId=1;pendingSync=[];currentBatchNum=1;
+  saveRecords();saveBatches();savePending();
+  updateBatchBadge();updateCounters();renderList();updateNetUI();
+  updateNavBadge();renderBatchHistory();closeModal();
+  toast('info','🔄',uiLang==='es'?'Todo reiniciado':uiLang==='en'?'All data reset':'所有数据已重置');
+}
+
+function updateNavBadge(){
+  const badge=document.getElementById('navBadge');
+  if(batches.length>0){badge.textContent=batches.length;badge.style.display='block';}
+  else badge.style.display='none';
+}
+
+// ── COUNTERS ─────────────────────────────────────────────────────────────────
+function updateCounters(){
+  document.getElementById('countBatch').textContent=records.length;
+  const total=records.length + batches.reduce((s,b)=>s+b.records.length,0);
+  document.getElementById('countTotal').textContent=total;
+  updateExportPreview();
+  updateNavBadge();
+}
+
+// ── EXPORT ────────────────────────────────────────────────────────────────────
+function buildBatchFilename(batchNum, count, tsStr){
+  const prefixPart=cfg.presetKey&&PRESETS[cfg.presetKey]
+    ?PRESETS[cfg.presetKey].name.replace(/[^a-zA-Z0-9]/g,'')
+    :(cfg.presetKey==='custom'?'Custom':'All');
+  return `scan_export_${prefixPart}_L${batchNum}_${count}_${tsStr}.txt`;
+}
+
+function buildBatchContent(batchNum, recs){
+  const prefixName=cfg.presetKey&&PRESETS[cfg.presetKey]?PRESETS[cfg.presetKey].name:'Custom';
+  const header=`# Lote ${batchNum} | Regla: ${prefixName} | Total: ${recs.length}`;
+  const rows=recs.map(r=>`${r.id}\t${r.time}\t${r.barcode}`).join('\n');
+  return header+'\n'+rows;
+}
+
+async function exportCurrentBatch(){
+  if(!records.length){toast('warn','⚠️',t('toastNoData'));return;}
+  if(!cfg.davUrl){toast('warn','⚠️',uiLang==='es'?'WebDAV no configurado':uiLang==='en'?'WebDAV not configured':'WebDAV 未配置');return;}
+  if(!isOnline){toast('warn','⚠️',t('offline'));return;}
+  const ts=new Date();
+  const tsS=`${ts.getFullYear()}${p(ts.getMonth()+1)}${p(ts.getDate())}_${p(ts.getHours())}${p(ts.getMinutes())}`;
+  const fn=buildBatchFilename(currentBatchNum,records.length,tsS);
+  toast('info','☁',uiLang==='es'?'Subiendo a WebDAV...':uiLang==='en'?'Uploading to WebDAV...':'上传到 WebDAV...');
+  const res=await uploadWebDAV(buildBatchContent(currentBatchNum,records),fn);
+  if(res.ok) toast('success','✅',t('backupOk').replace('%f',fn));
+  else toast('error','❌',t('toastGhFail')+res.msg);
+}
+
+
+
+async function exportAllBatches(){
+  const allRecs=[...batches.map(b=>b.records).flat(),...records];
+  if(!allRecs.length){toast('warn','⚠️',t('toastNoBatches'));return;}
+  if(!cfg.davUrl){toast('warn','⚠️',uiLang==='es'?'WebDAV no configurado':uiLang==='en'?'WebDAV not configured':'WebDAV 未配置');return;}
+  if(!isOnline){toast('warn','⚠️',t('offline'));return;}
+  const ts=new Date();
+  const tsS=`${ts.getFullYear()}${p(ts.getMonth()+1)}${p(ts.getDate())}_${p(ts.getHours())}${p(ts.getMinutes())}`;
+  const prefixPart=cfg.presetKey&&PRESETS[cfg.presetKey]?PRESETS[cfg.presetKey].name.replace(/[^a-zA-Z0-9]/g,''):'All';
+  const fn=`scan_export_${prefixPart}_ALL_${allRecs.length}_${tsS}.txt`;
+  let fileContent='';
+  batches.forEach(b=>{
+    fileContent+=`# Lote ${b.num} | Regla: ${b.prefix} | ${b.records.length} items | ${b.time}\n`;
+    fileContent+=b.records.map(r=>`${r.id}\t${r.time}\t${r.barcode}`).join('\n')+'\n\n';
+  });
+  if(records.length){
+    fileContent+=`# Lote ${currentBatchNum} (en curso) | ${records.length} items\n`;
+    fileContent+=records.map(r=>`${r.id}\t${r.time}\t${r.barcode}`).join('\n')+'\n';
+  }
+  toast('info','☁',uiLang==='es'?'Subiendo resumen a WebDAV...':uiLang==='en'?'Uploading summary to WebDAV...':'上传汇总到 WebDAV...');
+  const res=await uploadWebDAV(fileContent,fn);
+  if(res.ok) toast('success','✅',t('backupOk').replace('%f',fn));
+  else toast('error','❌',t('toastGhFail')+res.msg);
+}
+
+function downloadFile(content,name){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([content],{type:'text/plain;charset=utf-8'}));
+  a.download=name; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+function updateExportPreview(){
+  const el=document.getElementById('exportPreview'); if(!el) return;
+  const prefixPart=cfg.presetKey&&PRESETS[cfg.presetKey]
+    ?PRESETS[cfg.presetKey].name.replace(/[^a-zA-Z0-9]/g,''):'All';
+  el.textContent=`scan_export_${prefixPart}_L${currentBatchNum}_${records.length}_20260101_1200.txt`;
+}
+
+// ── BATCH HISTORY RENDER ──────────────────────────────────────────────────────
+function renderBatchHistory(){
+  const container=document.getElementById('batchHistoryList');
+  const totalItems=batches.reduce((s,b)=>s+b.records.length,0);
+  document.getElementById('historyBatchCount').textContent=batches.length;
+  document.getElementById('historyTotalCount').textContent=totalItems;
+
+  if(!batches.length){
+    container.innerHTML=`<div class="history-empty"><div style="font-size:48px;opacity:.3">📋</div><div style="font-size:14px;color:var(--text3);text-align:center">Sin lotes archivados</div></div>`;
+    return;
+  }
+  container.innerHTML=[...batches].reverse().map((b,ri)=>{
+    const idx=batches.length-1-ri;
+    const miniRows=b.records.slice(0,5).map(r=>{
+      const bc=r.barcode||'';
+      let bHtml=bc.length>5?escHtml(bc.slice(0,-5))+'<span class="bm-tail">'+escHtml(bc.slice(-5))+'</span>':'<span class="bm-tail">'+escHtml(bc)+'</span>';
+      const d=r.time?r.time.substring(0,10):'';const tt=r.time?r.time.substring(11,16):'';
+      return `<div class="batch-mini-row"><div class="bm-num">${r.id}</div><div class="bm-bc">${bHtml}</div><div class="bm-date">${d}\n${tt}</div></div>`;
+    }).join('');
+    const more=b.records.length>5?`<div style="text-align:center;padding:8px;font-size:12px;color:var(--text3)">... +${b.records.length-5} más</div>`:'';
+    const lbl=t('batchLabel').replace('%n',b.num);
+    return `<div class="batch-card">
+      <div class="batch-card-header" onclick="toggleBatchCard(${idx})">
+        <div class="batch-card-left">
+          <div class="batch-card-num">${lbl}</div>
+          <div class="batch-card-meta">${b.prefix} · ${b.time.substring(0,16)}</div>
+        </div>
+        <div class="batch-card-right">
+          <span class="batch-count-pill">${b.records.length}</span>
+          <span style="font-size:11px;font-family:var(--mono);color:${b.ghOk?'var(--green)':'var(--text3)'}">${b.ghOk?'☁ OK':'☁ —'}</span>
+        </div>
+      </div>
+      <div class="batch-card-body" id="batchBody-${idx}">${miniRows}${more}</div>
+    </div>`;
+  }).join('');
+}
+
+function toggleBatchCard(idx){
+  const body=document.getElementById('batchBody-'+idx);
+  if(body) body.classList.toggle('open');
+}
+
+// ── SETTINGS UI ───────────────────────────────────────────────────────────────
+function applyCfgToUI(){
+  document.getElementById('presetSelect').value=cfg.presetKey||'';
+  document.getElementById('minLen').value=cfg.minLen;
+  document.getElementById('maxLen').value=cfg.maxLen;
+  document.getElementById('davUrl').value=cfg.davUrl||'https://hakata.infini-cloud.net/dav/';
+  document.getElementById('davUser').value=cfg.davUser||'';
+  document.getElementById('davPass').value=cfg.davPass||'';
+  document.getElementById('davDir').value=cfg.davDir||'backups';
+  document.getElementById('continuousToggle').className='toggle-wrap'+(cfg.continuous?' on':'');
+  document.getElementById('voiceToggle').className='toggle-wrap'+(cfg.voiceEnabled?' on':'');
+  document.getElementById(cfg.voiceLang==='zh'?'langZh':'langEs').checked=true;
+  updatePrefixDisplay(); toggleCustomRow(); updateExportPreview();
+}
+function applyPreset(){
+  const v=document.getElementById('presetSelect').value; cfg.presetKey=v;
+  if(v&&PRESETS[v]){
+    cfg.prefixes=[...PRESETS[v].prefixes];
+    cfg.minLen=PRESETS[v].minLen; cfg.maxLen=PRESETS[v].maxLen;
+    document.getElementById('minLen').value=cfg.minLen;
+    document.getElementById('maxLen').value=cfg.maxLen;
+  }else if(v==='custom'){
+    cfg.prefixes=document.getElementById('customPrefixInput').value.split(',').map(s=>s.trim()).filter(Boolean);
+  }else{
+    cfg.prefixes=[]; cfg.minLen=1; cfg.maxLen=100;
+    document.getElementById('minLen').value=1; document.getElementById('maxLen').value=100;
+  }
+  toggleCustomRow(); updatePrefixDisplay(); updateExportPreview();
+}
+function toggleCustomRow(){
+  const v=document.getElementById('presetSelect').value;
+  const row=document.getElementById('customPrefixRow');
+  if(v==='custom'){row.style.display='flex';document.getElementById('customPrefixInput').value=cfg.prefixes.join(', ');}
+  else row.style.display='none';
+}
+function updatePrefixDisplay(){document.getElementById('prefixDisplay').value=cfg.prefixes.length?cfg.prefixes.join(', '):'（无限制）';}
+function saveSettings(){
+  cfg.minLen=parseInt(document.getElementById('minLen').value)||1;
+  cfg.maxLen=parseInt(document.getElementById('maxLen').value)||100;
+  cfg.davUrl=document.getElementById('davUrl').value.trim()||'https://hakata.infini-cloud.net/dav/';
+  cfg.davUser=document.getElementById('davUser').value.trim();
+  cfg.davPass=document.getElementById('davPass').value;
+  cfg.davDir=document.getElementById('davDir').value.trim()||'backups';
+  cfg.voiceLang=document.querySelector('input[name="lang"]:checked')?.value||'es';
+  if(cfg.presetKey==='custom') cfg.prefixes=document.getElementById('customPrefixInput').value.split(',').map(s=>s.trim()).filter(Boolean);
+  saveCfg(); updatePrefixDisplay(); updateChipBar(); updateExportPreview();
+  toast('success','✅',t('toastSaved')); switchTab('scan');
+}
+function toggleContinuous(){cfg.continuous=!cfg.continuous;document.getElementById('continuousToggle').className='toggle-wrap'+(cfg.continuous?' on':'');}
+function toggleVoice(){cfg.voiceEnabled=!cfg.voiceEnabled;document.getElementById('voiceToggle').className='toggle-wrap'+(cfg.voiceEnabled?' on':'');}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function renderList(){
+  const list=document.getElementById('recordList');
+  if(!records.length){
+    list.innerHTML=`<div class="empty-state" id="emptyState"><div class="empty-icon">📦</div><div class="empty-text" id="emptyText">${t('emptyText').replace('\n','<br>')}</div></div>`;
+    return;
+  }
+  list.innerHTML=records.map(r=>rowHTML(r)).join('');
+}
+function prependRow(rec){
+  const list=document.getElementById('recordList');
+  document.getElementById('emptyState')?.remove();
+  const div=document.createElement('div'); div.innerHTML=rowHTML(rec);
+  const el=div.firstElementChild; el.classList.add('new'); list.prepend(el);
+}
+function rowHTML(r){
+  const dot=r.synced?'<span class="sync-dot ok"></span>':'<span class="sync-dot pend"></span>';
+  const d=r.time?r.time.substring(0,10):''; const tt=r.time?r.time.substring(11,16):'';
+  const bc=r.barcode||'';
+  const bHtml=bc.length>5?escHtml(bc.slice(0,-5))+'<span class="barcode-tail">'+escHtml(bc.slice(-5))+'</span>':'<span class="barcode-tail">'+escHtml(bc)+'</span>';
+  return `<div class="record-row" id="row-${r.id}"><div class="td num">${dot}${r.id}</div><div class="td barcode">${bHtml}</div><div class="td date">${d}\n${tt}</div></div>`;
+}
+function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function fmtTime(d){return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;}
+function p(n){return String(n).padStart(2,'0');}
+function vibrate(ms){if(navigator.vibrate)navigator.vibrate(ms);}
+function toast(type,icon,msg){
+  clearTimeout(toastTimerId); const el=document.getElementById('toast');
+  document.getElementById('toastIcon').textContent=icon;
+  document.getElementById('toastMsg').textContent=msg;
+  el.className=`toast ${type} show`;
+  toastTimerId=setTimeout(()=>el.classList.remove('show'),type==='success'?2000:3500);
+}
+function switchTab(tab){
+  ['scan','history','settings'].forEach(t2=>{
+    document.getElementById('panel'+cap(t2)).classList.toggle('active',t2===tab);
+    document.getElementById('nav'+cap(t2)).classList.toggle('active',t2===tab);
+  });
+  if(tab==='settings') applyCfgToUI();
+  if(tab==='history') renderBatchHistory();
+}
+function cap(s){return s.charAt(0).toUpperCase()+s.slice(1);}
+function toggleMenu(){document.getElementById('overflowMenu').classList.toggle('show');}
+function closeMenu(){document.getElementById('overflowMenu').classList.remove('show');}
+function showModal(title,body,btns){
+  document.getElementById('modalTitle').textContent=title;
+  document.getElementById('modalBody').innerHTML=body;
+  document.getElementById('progWrap').style.display='none';
+  document.getElementById('progBar').style.width='0%';
+  document.getElementById('progText').textContent='';
+  const c=document.getElementById('modalBtns'); c.innerHTML='';
+  btns.forEach(b=>addMBtn(b.label,b.cls,b.fn,c));
+  document.getElementById('overlay').classList.add('show');
+}
+function addMBtn(label,cls,fn,container){
+  const c=container||document.getElementById('modalBtns');
+  const b=document.createElement('button'); b.className='mbtn '+cls; b.textContent=label; b.onclick=fn; c.appendChild(b);
+}
+function closeModal(){document.getElementById('overlay').classList.remove('show');}
+
+
+// ── SERVICE WORKER (offline support) ─────────────────────────────────────────
+(function registerSW(){
+  if(!('serviceWorker' in navigator)) return;
+  const swCode = "\nconst CACHE_NAME = 'pda-scanner-v4';\nconst ASSETS = ['/'];  // cache the page itself\n\n// Install: cache the page\nself.addEventListener('install', e => {\n  e.waitUntil(\n    caches.open(CACHE_NAME).then(cache => {\n      return cache.addAll(ASSETS).catch(() => {});\n    })\n  );\n  self.skipWaiting();\n});\n\n// Activate: clean old caches\nself.addEventListener('activate', e => {\n  e.waitUntil(\n    caches.keys().then(keys =>\n      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))\n    )\n  );\n  self.clients.claim();\n});\n\n// Fetch: network first, fall back to cache\nself.addEventListener('fetch', e => {\n  // Only handle GET requests for same-origin or cached resources\n  if (e.request.method !== 'GET') return;\n  // For WebDAV/external requests, let them pass through normally\n  const url = new URL(e.request.url);\n  if (url.origin !== self.location.origin && !e.request.url.includes('fonts.googleapis')) {\n    return;\n  }\n  e.respondWith(\n    fetch(e.request)\n      .then(response => {\n        // Cache successful responses for the app page\n        if (response.ok) {\n          const clone = response.clone();\n          caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));\n        }\n        return response;\n      })\n      .catch(() => caches.match(e.request).then(r => r || new Response('Offline', {status: 503})))\n  );\n});\n";
+  const blob = new Blob([swCode], {type: 'application/javascript'});
+  const swUrl = URL.createObjectURL(blob);
+  navigator.serviceWorker.register(swUrl, {scope: '/'})
+    .then(reg => {
+      reg.addEventListener('updatefound', () => {
+        const nw = reg.installing;
+        nw && nw.addEventListener('statechange', () => {
+          if(nw.state === 'installed' && navigator.serviceWorker.controller){
+            console.log('[SW] Update ready');
+          }
+        });
+      });
+      // Show offline indicator
+      navigator.serviceWorker.addEventListener('message', e => {
+        if(e.data && e.data.type === 'OFFLINE') updateNetUI();
+      });
+    })
+    .catch(err => console.warn('[SW] Registration failed:', err));
+})();
+
+
+// Cache current page HTML for offline use
+(function cachePageNow(){
+  if(!('caches' in window)) return;
+  caches.open('pda-scanner-v4').then(cache => {
+    cache.put(location.href, new Response(document.documentElement.outerHTML,
+      {headers: {'Content-Type': 'text/html; charset=utf-8'}}));
+  }).catch(()=>{});
+})();
+
+init();
+</script>
+</body>
+</html>
