@@ -351,7 +351,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
         Los archivos se organizan por carpeta de fecha: /backups/<strong>20260304</strong>/archivo.txt
       </div>
     </div>
-    <div class="setting-row col"><div class="setting-label" id="lblDavUrl">URL del Servidor WebDAV</div><input class="s-input full" id="davUrl" placeholder="https://dav.example.com/remote.php/dav/files/user/" value="https://icy-snowflake-3fb1.milai-mexico.workers.dev/dav/" type="url"></div>
+    <div class="setting-row col"><div class="setting-label" id="lblDavUrl">URL del Servidor WebDAV</div><input class="s-input full" id="davUrl" placeholder="https://dav.example.com/remote.php/dav/files/user/" value="https://icy-snowflake-3fb1.milai-mexico.workers.dev/dav/backups/" type="url"></div>
     <div class="setting-row col"><div class="setting-label" id="lblDavUser">Usuario</div><input class="s-input full" id="davUser" placeholder="username"></div>
     <div class="setting-row col"><div class="setting-label" id="lblDavPass">Contraseña</div><input class="s-input full" id="davPass" type="password" placeholder="••••••"></div>
     <div class="setting-row col"><div class="setting-label" id="lblDavDir">Directorio Raíz (subcarpeta de fecha automática)</div><input class="s-input full" id="davDir" placeholder="backups" value="backups"></div>
@@ -432,7 +432,7 @@ const I18N = {
     lblVoiceLang:'播报语言', lblVoiceTest:'试听', btnVoiceTest:'▶ 试听',
     shWebdav:'WebDAV 云备份',
     webdavWarning:'⚠️ 配置仅保存在本设备浏览器中，换设备需重新填写。',
-    webdavInfo:'💡 <strong>WebDAV 云备份：</strong><br>结束批次时自动上传至 WebDAV 服务器。<br>按日期文件夹保存：/backups/<strong>20260304</strong>/批次N_文件名.txt',
+    webdavInfo:'💡 <strong>WebDAV 云备份：</strong><br>结束批次时自动上传至 WebDAV 服务器。<br>URL 填写可直接写入的完整文件夹路径，文件名已含日期。',
     lblDavUrl:'WebDAV 服务器地址', lblDavUser:'用户名',
     lblDavPass:'密码', lblDavDir:'根目录（日期子文件夹自动创建）',
     lblDavTest:'连接测试', btnDavTest:'测试连接',
@@ -484,7 +484,7 @@ const I18N = {
     lblVoiceLang:'Language', lblVoiceTest:'Test voice', btnVoiceTest:'▶ Test',
     shWebdav:'WebDAV Cloud Backup',
     webdavWarning:'⚠️ Config saved in this browser only. Re-enter on another device.',
-    webdavInfo:'💡 <strong>WebDAV Backup:</strong><br>Auto-uploads when a batch is archived.<br>Files organized by date folder: /backups/<strong>20260304</strong>/batch_N_file.txt',
+    webdavInfo:'💡 <strong>WebDAV Backup:</strong><br>Auto-uploads when a batch is archived.<br>Set URL to the exact writable folder. Filename already includes the date.',
     lblDavUrl:'WebDAV Server URL', lblDavUser:'Username',
     lblDavPass:'Password', lblDavDir:'Root Directory (date subfolder auto-created)',
     lblDavTest:'Connection Test', btnDavTest:'Test Connection',
@@ -536,7 +536,7 @@ const I18N = {
     lblVoiceLang:'Idioma', lblVoiceTest:'Probar voz', btnVoiceTest:'▶ Probar',
     shWebdav:'Copia de Seguridad WebDAV',
     webdavWarning:'⚠️ La config solo se guarda en este navegador. Vuelve a ingresar en otro dispositivo.',
-    webdavInfo:'💡 <strong>Copia de Seguridad WebDAV:</strong><br>Se sube automáticamente al archivar un lote.<br>Archivos organizados por carpeta de fecha: /backups/<strong>20260304</strong>/lote_N_archivo.txt',
+    webdavInfo:'💡 <strong>Copia de Seguridad WebDAV:</strong><br>Se sube automáticamente al archivar un lote.<br>La URL debe apuntar a la carpeta con permisos de escritura. El nombre del archivo ya incluye la fecha.',
     lblDavUrl:'URL del Servidor WebDAV', lblDavUser:'Usuario',
     lblDavPass:'Contraseña', lblDavDir:'Directorio Raíz (subcarpeta de fecha automática)',
     lblDavTest:'Prueba de Conexión', btnDavTest:'Probar Conexión',
@@ -574,7 +574,7 @@ let scanActive=false, toastTimerId=null, uiLang='es', currentBatchNum=1;
 let cfg={
   presetKey:'ML', prefixes:['46'], minLen:10, maxLen:13,
   continuous:false, voiceEnabled:true, voiceLang:'es',
-  davUrl:'https://icy-snowflake-3fb1.milai-mexico.workers.dev/dav/', davUser:'', davPass:'', davDir:'backups'
+  davUrl:'https://icy-snowflake-3fb1.milai-mexico.workers.dev/dav/backups/', davUser:'', davPass:'', davDir:'backups'
 };
 
 // ── LANGUAGE ──────────────────────────────────────────────────────────────────
@@ -773,43 +773,26 @@ function testVoice(){
 async function uploadWebDAV(content, filename){
   if(!cfg.davUrl) return{ok:false,msg:'WebDAV URL not configured'};
   try{
-    // cfg.davUrl is the full base, e.g. https://worker.../dav/
+    // cfg.davUrl should be the full writable path, e.g.:
+    //   https://worker.../dav/backups/
+    // We PUT files directly into this folder — no subdirectory creation needed.
     const base=cfg.davUrl.replace(/\/$/,'');
-    const dir=(cfg.davDir||'backups').replace(/^\//,'').replace(/\/$/,'');
-    const now=new Date();
-    const dateFolder=`${now.getFullYear()}${p(now.getMonth()+1)}${p(now.getDate())}`;
-    // Build auth header using TextEncoder for reliable encoding of any characters
+    // Build auth header safely with TextEncoder
     let authHeader='';
     if(cfg.davUser){
       const creds=cfg.davUser+':'+cfg.davPass;
-      // Use Uint8Array for safe btoa encoding (handles non-latin chars)
       const bytes=new TextEncoder().encode(creds);
       let binary='';
       bytes.forEach(b=>binary+=String.fromCharCode(b));
       authHeader='Basic '+btoa(binary);
     }
-    const mkcolHeaders={'Content-Type':'text/plain'};
-    if(authHeader) mkcolHeaders['Authorization']=authHeader;
-    // Create subdirectories (ignore failures - they may already exist)
-    const dir1Url=`${base}/${dir}/`;
-    const dir2Url=`${base}/${dir}/${dateFolder}/`;
-    try{
-      const r1=await fetch(dir1Url,{method:'MKCOL',headers:mkcolHeaders});
-      console.log('[WebDAV] MKCOL',dir1Url,'→',r1.status);
-    }catch(e){console.log('[WebDAV] MKCOL dir1 error:',e.message);}
-    try{
-      const r2=await fetch(dir2Url,{method:'MKCOL',headers:mkcolHeaders});
-      console.log('[WebDAV] MKCOL',dir2Url,'→',r2.status);
-    }catch(e){console.log('[WebDAV] MKCOL dir2 error:',e.message);}
-    // Upload the file
-    const fileUrl=`${base}/${dir}/${dateFolder}/${filename}`;
-    console.log('[WebDAV] PUT',fileUrl);
+    const fileUrl=`${base}/${filename}`;
+    console.log('[WebDAV] PUT →', fileUrl);
     const putHeaders={'Content-Type':'text/plain; charset=utf-8'};
     if(authHeader) putHeaders['Authorization']=authHeader;
     const res=await fetch(fileUrl,{method:'PUT',headers:putHeaders,body:content});
-    console.log('[WebDAV] PUT result:',res.status);
+    console.log('[WebDAV] response:', res.status);
     if([200,201,204].includes(res.status)) return{ok:true};
-    // Return detailed error message
     let errDetail=`HTTP ${res.status}`;
     try{const txt=await res.text();if(txt&&txt.length<300)errDetail+=' | '+txt.replace(/<[^>]+>/g,'').trim().substring(0,150);}catch{}
     return{ok:false,msg:errDetail};
@@ -827,9 +810,7 @@ async function testWebDAV(){
   el.style.display='inline-block';el.className='dav-status testing';el.textContent=t('ghTesting');
   // Show exact URL being tested
   const base=url.replace(/\/$/,'');
-  const now=new Date();
-  const df=`${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
-  const testUrl=`${base}/${dir}/${df}/_test_pda.txt`;
+  const testUrl=`${base}/_test_pda.txt`;
   console.log('[WebDAV Test] PUT →', testUrl);
   toast('warn','🔍','Testing: '+testUrl);
   const res=await uploadWebDAV('connection_test_'+Date.now(),'_test_pda.txt');
@@ -1059,7 +1040,7 @@ function applyCfgToUI(){
   document.getElementById('presetSelect').value=cfg.presetKey||'';
   document.getElementById('minLen').value=cfg.minLen;
   document.getElementById('maxLen').value=cfg.maxLen;
-  document.getElementById('davUrl').value=cfg.davUrl||'https://icy-snowflake-3fb1.milai-mexico.workers.dev/dav/';
+  document.getElementById('davUrl').value=cfg.davUrl||'https://icy-snowflake-3fb1.milai-mexico.workers.dev/dav/backups/';
   document.getElementById('davUser').value=cfg.davUser||'';
   document.getElementById('davPass').value=cfg.davPass||'';
   document.getElementById('davDir').value=cfg.davDir||'backups';
