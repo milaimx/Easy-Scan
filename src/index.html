@@ -453,6 +453,9 @@ const I18N = {
     backupFail:'⚠️ 备份失败：%e', backupFailQ:'是否仍然归档？',
     offlineMsg:'⚠️ 当前离线，已下载本地备份文件。',
     backupOk:'批次已归档备份 → %f',
+    resetBackupOk:'累计数据已同步 → %f，正在重置...',
+    resetUploadTitle:'同步并重置',
+    resetUploadBody:'正在将累计 %c 条数据上传至 WebDAV，完成后自动清空。',
     chipCustomPrompt:'请先在设置中配置自定义前缀',
     ghTesting:'⏳ 测试中...', ghOk:'✅ 连接成功', ghFail:'❌ ',
     batchLabel:'第 %n 批', batchExportBtn:'导出',
@@ -505,6 +508,9 @@ const I18N = {
     backupFail:'⚠️ Backup failed: %e', backupFailQ:'Archive anyway?',
     offlineMsg:'⚠️ Offline — local backup file downloaded.',
     backupOk:'Batch archived → %f',
+    resetBackupOk:'Cumulative data synced → %f. Resetting...',
+    resetUploadTitle:'Sync & Reset',
+    resetUploadBody:'Uploading %c cumulative records to WebDAV, then resetting.',
     chipCustomPrompt:'Configure custom prefix in Settings first',
     ghTesting:'⏳ Testing...', ghOk:'✅ Connected', ghFail:'❌ ',
     batchLabel:'Batch %n', batchExportBtn:'Export',
@@ -557,6 +563,9 @@ const I18N = {
     backupFail:'⚠️ Error de respaldo: %e', backupFailQ:'¿Archivar de todos modos?',
     offlineMsg:'⚠️ Sin conexión — archivo de respaldo descargado.',
     backupOk:'Lote archivado → %f',
+    resetBackupOk:'Datos acumulados sincronizados → %f. Reiniciando...',
+    resetUploadTitle:'Sincronizar y Reiniciar',
+    resetUploadBody:'Subiendo %c registros acumulados a WebDAV, luego se reiniciará.',
     chipCustomPrompt:'Configura el prefijo personalizado en Ajustes primero',
     ghTesting:'⏳ Probando...', ghOk:'✅ Conectado', ghFail:'❌ ',
     batchLabel:'Lote %n', batchExportBtn:'Exportar',
@@ -895,20 +904,86 @@ function doArchiveBatch(batchNum, ts, ghSuccess=false){
   toast('info','📦',t('toastBatchArchived').replace('%n',batchNum).replace('%c',batches[batches.length-1].records.length));
 }
 
+
+function buildAllBatchesFile(ts){
+  const tsS=`${ts.getFullYear()}${p(ts.getMonth()+1)}${p(ts.getDate())}_${p(ts.getHours())}${p(ts.getMinutes())}${p(ts.getSeconds())}`;
+  const prefixPart=cfg.presetKey&&PRESETS[cfg.presetKey]?PRESETS[cfg.presetKey].name.replace(/[^a-zA-Z0-9]/g,''):'All';
+  const allCount=batches.reduce((s,b)=>s+b.records.length,0)+records.length;
+  const fn=`scan_export_${prefixPart}_ALL_${allCount}_${tsS}.txt`;
+  let fileContent='';
+  batches.forEach(b=>{
+    fileContent+=`# Lote ${b.num} | Regla: ${b.prefix} | ${b.records.length} items | ${b.time}\n`;
+    fileContent+=b.records.map(r=>`${r.id}\t${r.time}\t${r.barcode}`).join('\n')+'\n\n';
+  });
+  if(records.length){
+    fileContent+=`# Lote ${currentBatchNum} (en curso) | ${records.length} items\n`;
+    fileContent+=records.map(r=>`${r.id}\t${r.time}\t${r.barcode}`).join('\n')+'\n';
+  }
+  return {fn, fileContent, allCount};
+}
+
 function confirmResetAll(){
   const totalBatches=batches.length;
   const totalItems=records.length+batches.reduce((s,b)=>s+b.records.length,0);
   if(totalBatches===0&&records.length===0){toast('warn','⚠️',t('toastNoData'));return;}
   showModal(t('confirmClearAllTitle'),
     t('confirmClearAllBody').replace('%n',totalBatches).replace('%c',totalItems),
-    [{label:t('cancelBtn'),cls:'flat',fn:closeModal},{label:t('clearAllBtn'),cls:'raised',fn:doResetAll}]);
+    [{label:t('cancelBtn'),cls:'flat',fn:closeModal},{label:t('clearAllBtn'),cls:'raised',fn:executeResetAll}]);
 }
+
+async function executeResetAll(){
+  const ts=new Date();
+  const totalItems=records.length+batches.reduce((s,b)=>s+b.records.length,0);
+  // Show progress modal
+  document.getElementById('modalTitle').textContent=t('resetUploadTitle');
+  document.getElementById('modalBody').textContent=t('resetUploadBody').replace('%c',totalItems);
+  document.getElementById('progWrap').style.display='block';
+  document.getElementById('progBar').style.width='20%';
+  document.getElementById('modalBtns').innerHTML='';
+
+  const {fn, fileContent, allCount}=buildAllBatchesFile(ts);
+
+  if(cfg.davUrl&&isOnline){
+    document.getElementById('progBar').style.width='50%';
+    document.getElementById('progText').textContent='WebDAV...';
+    const res=await uploadWebDAV(fileContent,fn);
+    document.getElementById('progBar').style.width='90%';
+    if(!res.ok){
+      // Upload failed — ask user whether to proceed anyway
+      document.getElementById('progWrap').style.display='none';
+      document.getElementById('progText').textContent='';
+      document.getElementById('modalBody').innerHTML=
+        `<span style="color:var(--orange)">${t('backupFail').replace('%e',res.msg)}</span><br><br>${t('backupFailQ')}`;
+      addMBtn(t('cancelBtn'),'flat',closeModal);
+      addMBtn(t('forceClearBtn'),'raised-o',()=>{
+        doResetAll();
+        toast('warn','⚠️',uiLang==='es'?'Reiniciado sin sincronizar (error WebDAV)':uiLang==='en'?'Reset without sync (WebDAV error)':'已重置（WebDAV 上传失败）');
+      });
+      return;
+    }
+    document.getElementById('progBar').style.width='100%';
+    document.getElementById('progText').textContent='';
+    setTimeout(()=>{
+      doResetAll();
+      toast('success','✅',t('resetBackupOk').replace('%f',fn));
+    },400);
+  }else{
+    // Offline — download locally then ask to proceed
+    downloadFile(fileContent,fn);
+    document.getElementById('progWrap').style.display='none';
+    document.getElementById('modalBody').innerHTML=
+      `<span style="color:var(--orange)">${t('offlineMsg')}</span>`;
+    addMBtn(t('cancelBtn'),'flat',closeModal);
+    addMBtn(t('localSaveBtn'),'raised-o',doResetAll);
+  }
+}
+
 function doResetAll(){
   records=[];batches=[];nextId=1;pendingSync=[];currentBatchNum=1;
   saveRecords();saveBatches();savePending();
   updateBatchBadge();updateCounters();renderList();updateNetUI();
   updateNavBadge();renderBatchHistory();closeModal();
-  toast('info','🔄',uiLang==='es'?'Todo reiniciado':uiLang==='en'?'All data reset':'所有数据已重置');
+  toast('info','🔄',uiLang==='es'?'Todo reiniciado a cero':uiLang==='en'?'All data reset to zero':'所有数据已清零');
 }
 
 function updateNavBadge(){
